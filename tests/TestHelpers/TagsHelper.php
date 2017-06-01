@@ -21,9 +21,9 @@
  */
 namespace TestHelpers;
 
-use GuzzleHttp\Message\ResponseInterface;
 use Exception;
 use PHPUnit_Framework_Assert;
+use Psr\Http\Message\ResponseInterface;
 use SimpleXMLElement;
 
 /**
