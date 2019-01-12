@@ -38,6 +38,7 @@
 	 * @typedef {object} OC.Share.Types.ShareInfo
 	 * @property {number} share_type
 	 * @property {number} permissions
+	 * @property {string} extra_permissions
 	 * @property {number} file_source optional
 	 * @property {number} item_source
 	 * @property {string} token
@@ -54,6 +55,14 @@
 	 * @property {OC.Share.Types.Reshare} reshare
 	 * @property {OC.Share.Types.ShareInfo[]} shares
 	 * @property {OC.Share.Types.LinkShareInfo|undefined} linkShare
+	 */
+
+	/**
+	 * @typedef {object} OC.Share.Types.ShareExtraPermission
+	 * @property {string} name
+	 * @property {bool}   enabled
+	 * @property {string} app
+	 * @property {string} label
 	 */
 
 	/**
@@ -84,6 +93,11 @@
 
 		_linkSharesCollection: null,
 
+		/**
+		 * @type {object} available extra permissions for this file/folder share
+		 */
+		_availableExtraPermissions: null,
+
 		initialize: function(attributes, options) {
 			if(!_.isUndefined(options.configModel)) {
 				this.configModel = options.configModel;
@@ -94,8 +108,10 @@
 			}
 
 			this._linkSharesCollection = new OC.Share.SharesCollection();
+			this._availableExtraPermissions = JSON.parse('{}');
 
 			_.bindAll(this, 'addShare');
+			OC.Plugins.attach('OC.Share.ShareItemModel', this);
 		},
 
 		defaults: {
@@ -126,10 +142,9 @@
 			options = options || {};
 			attributes = _.extend({}, attributes);
 
-			var defaultPermissions = OC.getCapabilities()['files_sharing']['default_permissions'] || OC.PERMISSION_ALL;
-
 			// Default permissions are Edit (CRUD) and Share
 			// Check if these permissions are possible
+			var defaultPermissions = OC.getCapabilities()['files_sharing']['default_permissions'] || OC.PERMISSION_ALL;
 			var possiblePermissions = OC.PERMISSION_READ;
 			if (this.updatePermissionPossible()) {
 				possiblePermissions = possiblePermissions | OC.PERMISSION_UPDATE;
@@ -143,8 +158,18 @@
 			if (this.configModel.get('isResharingAllowed') && (this.sharePermissionPossible())) {
 				possiblePermissions = possiblePermissions | OC.PERMISSION_SHARE;
 			}
-
 			attributes.permissions = defaultPermissions & possiblePermissions;
+
+			var extraPermissions = [];
+			_.map(this._getCompatibleExtraPermissions(attributes.permissions), function(extraPermission) {
+				extraPermissions.push({
+					app : extraPermission.app,
+					name: extraPermission.id,
+					enabled: extraPermission.meta.default
+				});
+			});
+			attributes.extraPermissions = extraPermissions;
+
 			if (_.isUndefined(attributes.path)) {
 				attributes.path = this.fileInfoModel.getFullPath();
 			}
@@ -395,6 +420,18 @@
 		},
 
 		/**
+		 * whether permission is in permission bitmap
+		 *
+		 * @param {number} permissions
+		 * @param {number} permission
+		 * @returns {boolean}
+		 * @private
+		 */
+		_hasPermission: function(permissions, permission) {
+			return (permissions & permission) === permission;
+		},
+
+		/**
 		 * whether a share from shares has the requested permission
 		 *
 		 * @param {number} shareIndex
@@ -408,7 +445,7 @@
 			if(!_.isObject(share)) {
 				throw "Unknown Share";
 			}
-			return (share.permissions & permission) === permission;
+			return this._hasPermission(share.permissions, permission);
 		},
 
 		notificationMailWasSent: function(shareIndex) {
@@ -752,7 +789,105 @@
 				result.push(OC.Share.SHARE_TYPE_LINK);
 			}
 			return _.uniq(result);
+		},
+
+		/**
+		 *
+		 * @param {number} permissions
+		 * @returns {Array}
+		 * @private
+		 */
+		_getCompatibleExtraPermissions: function(permissions) {
+			var result = [];
+			for (var appId in this._availableExtraPermissions) {
+				if (!this._availableExtraPermissions.hasOwnProperty(appId)) {
+					continue;
+				}
+				for (var permissionId in this._availableExtraPermissions[appId]) {
+					if (!this._availableExtraPermissions[appId].hasOwnProperty(permissionId)) {
+						continue;
+					}
+					var permissionMeta = this._availableExtraPermissions[appId][permissionId];
+
+					var compatible = true;
+
+					for (var i in permissionMeta.incompatiblePermissions) {
+						if (this._hasPermission(permissions, permissionMeta.incompatiblePermissions[i])) {
+							compatible = false;
+						}
+					}
+
+					if (compatible) {
+						result.push({
+							app: appId,
+							id: permissionId,
+							meta: permissionMeta
+						});					}
+				}
+			}
+
+			return result
+		},
+
+		/**
+		 * @param shareIndex
+		 * @returns OC.Share.Types.ShareExtraPermission[]
+		 */
+		getShareExtraPermissions: function(shareIndex) {
+			/** @type OC.Share.Types.ShareInfo **/
+			var share = this.get('shares')[shareIndex];
+			if(!_.isObject(share)) {
+				throw "Unknown Share";
+			}
+
+			if (_.isUndefined(share.extra_permissions) || _.isUndefined(share.permissions)) {
+				return [];
+			}
+
+			// Mark available permissions as enabled if share has extra permission
+			var formattedPermissions = [];
+			var shareExtraPermissions = JSON.parse(share.extra_permissions);
+			_.map(this._getCompatibleExtraPermissions(share.permissions), function(extraPermission) {
+				var enabled = extraPermission.meta.default;
+				shareExtraPermissions.map(function(permission) {
+					if (permission.app === extraPermission.app &&
+						permission.name === extraPermission.id) {
+						enabled = permission.enabled;
+					}
+				});
+
+				var shareExtraPermission = {
+					app: extraPermission.app,
+					name: extraPermission.id,
+					label: extraPermission.meta.label,
+					enabled: enabled
+				};
+				formattedPermissions.push(shareExtraPermission);
+			});
+
+			return formattedPermissions;
+		},
+
+		/**
+		 * Apps can register their extra share permissions
+		 *
+		 * @param {string}   $appId
+		 * @param {string}   $permissionName
+		 * @param {string}   $permissionLabel
+		 * @param {boolean}  $permissionDefault
+		 * @param {number[]} $incompatiblePermissions
+		 */
+		registerExtraSharePermission: function($appId, $permissionName, $permissionLabel, $permissionDefault, $incompatiblePermissions) {
+			if (!this._availableExtraPermissions.hasOwnProperty($appId)) {
+				this._availableExtraPermissions[$appId] = {};
+			}
+			this._availableExtraPermissions[$appId][$permissionName] = {
+				incompatiblePermissions: $incompatiblePermissions,
+				default: $permissionDefault,
+				label: $permissionLabel
+			};
 		}
+
 	});
 
 	OC.Share.ShareItemModel = ShareItemModel;

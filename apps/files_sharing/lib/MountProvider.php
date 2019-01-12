@@ -157,20 +157,36 @@ class MountProvider implements IMountProvider {
 				continue;
 			}
 
-			$superShare = $this->shareManager->newShare();
-
 			// compute super share based on first entry of the group
+			$superShare = $this->shareManager->newShare();
 			$superShare->setId($shares[0]->getId())
 				->setShareOwner($shares[0]->getShareOwner())
 				->setNodeId($shares[0]->getNodeId())
 				->setTarget($shares[0]->getTarget());
 
 			// use most permissive permissions
+			// this covers the case where there are multiple shares for the same
+			// file e.g. from different groups and different permissions
 			$permissions = 0;
+			$extraPermissions = $superShare->getExtraPermissions();
 			foreach ($shares as $share) {
+				// update permissions
 				$permissions |= $share->getPermissions();
+
+				//update extra permissions
+				foreach($share->getExtraPermissions()->getApps() as $app) {
+					foreach($share->getExtraPermissions()->getKeys($app) as $key) {
+						// if permission is already enabled, it is most permissive
+						if ($extraPermissions->getPermission($app, $key) === true) {
+							continue;
+						}
+						$enabled = $share->getExtraPermissions()->getPermission($app, $key);
+						$extraPermissions->setPermission($app, $key, $enabled);
+					}
+				}
+
+				// adjust target, for database consistency if needed
 				if ($share->getTarget() !== $superShare->getTarget()) {
-					// adjust target, for database consistency
 					$share->setTarget($superShare->getTarget());
 					try {
 						$this->shareManager->moveShare($share, $user->getUID());
@@ -191,8 +207,8 @@ class MountProvider implements IMountProvider {
 					}
 				}
 			}
-
 			$superShare->setPermissions($permissions);
+			$superShare->setExtraPermissions($extraPermissions);
 
 			$result[] = [$superShare, $shares];
 		}

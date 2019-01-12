@@ -28,8 +28,10 @@ use OCP\Files\NotFoundException;
 use OCP\IUserManager;
 use OCP\Share\Exceptions\IllegalIDChangeException;
 use OC\Share\Constants;
+use OCP\Share\IExtraPermissions;
+use OCP\Share\IShare;
 
-class Share implements \OCP\Share\IShare {
+class Share implements IShare {
 
 	/** @var string */
 	private $id;
@@ -51,6 +53,8 @@ class Share implements \OCP\Share\IShare {
 	private $shareOwner;
 	/** @var int */
 	private $permissions;
+	/** @var IExtraPermissions */
+	private $extraPermissions;
 	/** @var \DateTime */
 	private $expireDate;
 	/** @var string */
@@ -272,6 +276,20 @@ class Share implements \OCP\Share\IShare {
 	/**
 	 * @inheritdoc
 	 */
+	public function setExtraPermissions($permissions) {
+		$this->extraPermissions = $permissions;
+		return $this;
+	}
+	/**
+	 * @inheritdoc
+	 */
+	public function getExtraPermissions() {
+		return $this->extraPermissions;
+	}
+
+	/**
+	 * @inheritdoc
+	 */
 	public function setExpirationDate($expireDate) {
 		//TODO checks
 
@@ -362,7 +380,7 @@ class Share implements \OCP\Share\IShare {
 	 * Set the parent of this share
 	 *
 	 * @param int parent
-	 * @return \OCP\Share\IShare
+	 * @return IShare
 	 * @deprecated The new shares do not have parents. This is just here for legacy reasons.
 	 */
 	public function setParent($parent) {

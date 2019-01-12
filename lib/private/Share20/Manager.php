@@ -641,6 +641,7 @@ class Manager implements IManager {
 			'shareType' => $share->getShareType(),
 			'uidOwner' => $share->getSharedBy(),
 			'permissions' => $share->getPermissions(),
+			'extraPermissions' => $share->getExtraPermissions(),
 			'fileSource' => $share->getNode()->getId(),
 			'expiration' => $share->getExpirationDate(),
 			'token' => $share->getToken(),
@@ -668,6 +669,7 @@ class Manager implements IManager {
 			'shareType' => $share->getShareType(),
 			'uidOwner' => $share->getSharedBy(),
 			'permissions' => $share->getPermissions(),
+			'extraPermissions' => $share->getExtraPermissions(),
 			'fileSource' => $share->getNode()->getId(),
 			'expiration' => $share->getExpirationDate(),
 			'token' => $share->getToken(),
@@ -1382,7 +1384,10 @@ class Manager implements IManager {
 	 * @return \OCP\Share\IShare;
 	 */
 	public function newShare() {
-		return new \OC\Share20\Share($this->rootFolder, $this->userManager);
+		$extraPermissions = new ExtraPermissions();
+		$share = new Share($this->rootFolder, $this->userManager);
+		$share->setExtraPermissions($extraPermissions);
+		return $share;
 	}
 
 	/**

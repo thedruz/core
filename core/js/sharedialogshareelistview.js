@@ -66,10 +66,18 @@
 			'</span>' +
 			'{{/if}}' +
 			'</div>' +
+			'<div class="extraPermission"">' +
+			'{{#each extraPermissions}}' +
+			'<span class="shareOption">' +
+			'<input id="can-{{name}}-{{cid}}-{{shareWith}}" type="checkbox" name="{{name}}" class="extra-permissions checkbox" {{#if enabled}}checked="checked"{{/if}} data-app="{{app}}" data-enabled="{{enabled}}""/>' +
+			'<label for="can-{{name}}-{{cid}}-{{shareWith}}">{{label}}</label>' +
+			'</span>' +
+			'{{/each}}' +
+			'</div>' +
 			'</li>' +
 			'{{/each}}' +
 			'</ul>'
-		;
+	;
 
 	/**
 	 * @class OCA.Share.ShareDialogShareeListView
@@ -94,6 +102,7 @@
 		events: {
 			'click .unshare': 'onUnshare',
 			'click .permissions': 'onPermissionChange',
+			'click .extra-permissions': 'onPermissionChange',
 			'click .showCruds': 'onCrudsToggle',
 			'click .mailNotification': 'onSendMailNotification'
 		},
@@ -112,8 +121,31 @@
 		},
 
 		/**
-		 *
-		 * @param {OC.Share.Types.ShareInfo} shareInfo
+		 * @param shareIndex
+		 * @returns {object}
+		 */
+		getExtraPermissionsObject: function(shareIndex) {
+			var shareWith = this.model.getShareWith(shareIndex);
+
+			// Returns OC.Share.Types.ShareExtraPermission[]
+			var permissions = this.model.getShareExtraPermissions(shareIndex);
+
+			var list = [];
+			permissions.map(function(permission) {
+				list.push(_.extend(
+					{
+						cid: this.cid,
+						shareWith: shareWith
+					},
+					permission)
+				);
+			});
+
+			return list;
+		},
+
+		/**
+		 * @param shareIndex
 		 * @returns {object}
 		 */
 		getShareeObject: function(shareIndex) {
@@ -136,6 +168,7 @@
 				hasCreatePermission: this.model.hasCreatePermission(shareIndex),
 				hasUpdatePermission: this.model.hasUpdatePermission(shareIndex),
 				hasDeletePermission: this.model.hasDeletePermission(shareIndex),
+				extraPermissions: this.getExtraPermissionsObject(shareIndex),
 				wasMailSent: this.model.notificationMailWasSent(shareIndex),
 				shareWith: shareWith,
 				shareWithDisplayName: shareWithDisplayName,
@@ -261,7 +294,7 @@
 			var shareType = $li.data('share-type');
 			var shareWith = $li.attr('data-share-with');
 
-			// adjust checkbox states
+			// adjust share permissions and their required checkbox states
 			var $checkboxes = $('.permissions', $li).not('input[name="edit"]').not('input[name="share"]');
 			var checked;
 			if ($element.attr('name') === 'edit') {
@@ -279,7 +312,19 @@
 				permissions |= $(checkbox).data('permissions');
 			});
 
-			this.model.updateShare(shareId, {permissions: permissions});
+			// Check extra share permissions
+			var extraPermissions = [];
+			$('.extra-permissions', $li).each(function(index, checkbox) {
+				var checked = $(checkbox).is(':checked');
+				$(checkbox).prop('enabled', checked);
+				extraPermissions.push({
+					app : $(checkbox).data('app'),
+					name: $(checkbox).attr('name'),
+					enabled: checked
+				});
+			});
+
+			this.model.updateShare(shareId, {permissions: permissions, extraPermissions: extraPermissions});
 		},
 
 		onCrudsToggle: function(event) {

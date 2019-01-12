@@ -26,6 +26,7 @@
 namespace OC\Share20;
 
 use OCP\Files\File;
+use OCP\Share\IExtraPermissions;
 use OCP\Share\IShare;
 use OCP\Share\IShareProvider;
 use OC\Share20\Exception\InvalidShare;
@@ -153,6 +154,12 @@ class DefaultShareProvider implements IShareProvider {
 		// set the permissions
 		$qb->setValue('permissions', $qb->createNamedParameter($share->getPermissions()));
 
+		// set extra permissions
+		$extraSharePermissions = $this->formatExtraPermissions(
+			$share->getExtraPermissions()
+		);
+		$qb->setValue('extra_permissions', $qb->createNamedParameter($extraSharePermissions));
+
 		// Set who created this share
 		$qb->setValue('uid_initiator', $qb->createNamedParameter($share->getSharedBy()));
 
@@ -198,6 +205,11 @@ class DefaultShareProvider implements IShareProvider {
 	 */
 	public function update(\OCP\Share\IShare $share) {
 		$this->validate($share);
+
+		$extraSharePermissions = $this->formatExtraPermissions(
+			$share->getExtraPermissions()
+		);
+
 		if ($share->getShareType() === \OCP\Share::SHARE_TYPE_USER) {
 			/*
 			 * We allow updating the recipient on user shares.
@@ -209,6 +221,7 @@ class DefaultShareProvider implements IShareProvider {
 				->set('uid_owner', $qb->createNamedParameter($share->getShareOwner()))
 				->set('uid_initiator', $qb->createNamedParameter($share->getSharedBy()))
 				->set('permissions', $qb->createNamedParameter($share->getPermissions()))
+				->set('extra_permissions', $qb->createNamedParameter($extraSharePermissions))
 				->set('item_source', $qb->createNamedParameter($share->getNode()->getId()))
 				->set('file_source', $qb->createNamedParameter($share->getNode()->getId()))
 				->set('accepted', $qb->createNamedParameter($share->getState()))
@@ -221,6 +234,7 @@ class DefaultShareProvider implements IShareProvider {
 				->set('uid_owner', $qb->createNamedParameter($share->getShareOwner()))
 				->set('uid_initiator', $qb->createNamedParameter($share->getSharedBy()))
 				->set('permissions', $qb->createNamedParameter($share->getPermissions()))
+				->set('extra_permissions', $qb->createNamedParameter($extraSharePermissions))
 				->set('item_source', $qb->createNamedParameter($share->getNode()->getId()))
 				->set('file_source', $qb->createNamedParameter($share->getNode()->getId()))
 				->set('accepted', $qb->createNamedParameter($share->getState()))
@@ -246,6 +260,7 @@ class DefaultShareProvider implements IShareProvider {
 			$qb->update('share')
 				->where($qb->expr()->eq('parent', $qb->createNamedParameter($share->getId())))
 				->set('permissions', $qb->createNamedParameter($share->getPermissions()))
+				->set('extra_permissions', $qb->createNamedParameter($extraSharePermissions))
 				->execute();
 		} elseif ($share->getShareType() === \OCP\Share::SHARE_TYPE_LINK) {
 			$qb = $this->dbConn->getQueryBuilder();
@@ -255,6 +270,7 @@ class DefaultShareProvider implements IShareProvider {
 				->set('uid_owner', $qb->createNamedParameter($share->getShareOwner()))
 				->set('uid_initiator', $qb->createNamedParameter($share->getSharedBy()))
 				->set('permissions', $qb->createNamedParameter($share->getPermissions()))
+				->set('extra_permissions', $qb->createNamedParameter($extraSharePermissions))
 				->set('item_source', $qb->createNamedParameter($share->getNode()->getId()))
 				->set('file_source', $qb->createNamedParameter($share->getNode()->getId()))
 				->set('token', $qb->createNamedParameter($share->getToken()))
@@ -396,6 +412,10 @@ class DefaultShareProvider implements IShareProvider {
 			$data = $stmt->fetch();
 			$stmt->closeCursor();
 
+			$extraSharePermissions = $this->formatExtraPermissions(
+				$share->getExtraPermissions()
+			);
+
 			if ($data === false) {
 				// No usergroup share yet. Create one.
 				$qb = $this->dbConn->getQueryBuilder();
@@ -411,6 +431,7 @@ class DefaultShareProvider implements IShareProvider {
 						'file_source' => $qb->createNamedParameter($share->getNode()->getId()),
 						'file_target' => $qb->createNamedParameter($share->getTarget()),
 						'permissions' => $qb->createNamedParameter($share->getPermissions()),
+						'extra_permissions' => $qb->createNamedParameter($extraSharePermissions),
 						'stime' => $qb->createNamedParameter($share->getShareTime()->getTimestamp()),
 						'accepted' => $qb->createNamedParameter($share->getState()),
 					])->execute();
@@ -423,6 +444,7 @@ class DefaultShareProvider implements IShareProvider {
 					// make sure to reset the permissions to the one of the parent share,
 					// as legacy entries with zero permissions might still exist
 					->set('permissions', $qb->createNamedParameter($share->getPermissions()))
+					->set('extra_permissions', $qb->createNamedParameter($extraSharePermissions))
 					->where($qb->expr()->eq('id', $qb->createNamedParameter($data['id'])))
 					->execute();
 			}
@@ -963,6 +985,9 @@ class DefaultShareProvider implements IShareProvider {
 			$share->setToken($data['token']);
 		}
 
+		$extraPermissions = $this->loadExtraPermissions($data['extra_permissions']);
+		$share->setExtraPermissions($extraPermissions);
+
 		$share->setSharedBy($data['uid_initiator']);
 		$share->setShareOwner($data['uid_owner']);
 
@@ -1237,5 +1262,46 @@ class DefaultShareProvider implements IShareProvider {
 		}
 
 		// TODO: add more early validation for fields instead of relying on the DB
+	}
+
+	/**
+	 * Load from database format (JSON string) to IExtraPermissions
+	 *
+	 * @param string $data
+	 * @return IExtraPermissions
+	 */
+	private function loadExtraPermissions($data) {
+		$extraPermissions = new ExtraPermissions();
+		if (!is_null($data)) {
+			$extraPermissionsJson = json_decode($data, true);
+			foreach ($extraPermissionsJson as $app => $keys) {
+				foreach($keys as $key => $enabled) {
+					$extraPermissions->setPermission($app, $key, $enabled);
+				}
+			}
+		}
+
+		return $extraPermissions;
+	}
+
+	/**
+	 * Format IExtraPermissions to database format (JSON string)
+	 *
+	 * @param IExtraPermissions $permissions
+	 * @return string|null
+	 */
+	private function formatExtraPermissions($permissions) {
+		$formattedPermissions = [];
+		foreach($permissions->getApps() as $app) {
+			$formattedPermissions[$app] = [];
+			foreach($permissions->getKeys($app) as $key) {
+				$formattedPermissions[$app][$key] = $permissions->getPermission($app, $key);
+			}
+		}
+
+		if (empty($formattedPermissions)) {
+			return null;
+		}
+		return json_encode($formattedPermissions);
 	}
 }
