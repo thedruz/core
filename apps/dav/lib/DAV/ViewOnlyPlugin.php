@@ -22,7 +22,9 @@
 namespace OCA\DAV\DAV;
 
 use OCA\DAV\Connector\Sabre\Exception\Forbidden;
-use OCA\DAV\Connector\Sabre\File;
+use OCA\DAV\Connector\Sabre\File as DavFile;
+use OCA\Files_Sharing\SharedStorage;
+use OCP\Files\File;
 use OCP\Files\Folder;
 use OCP\Files\InvalidPathException;
 use Sabre\DAV\Exception\ServiceUnavailable;
@@ -78,14 +80,18 @@ class ViewOnlyPlugin extends ServerPlugin {
 
 		try {
 			$davNode = $this->server->tree->getNodeForPath($path);
-			if (!($davNode instanceof File || $davNode instanceof Folder)) {
+			if (!$davNode instanceof DavFile) {
+				return true;
+			}
+
+			$node = $davNode->getNode();
+			if (!($node instanceof File || $node instanceof Folder)) {
 				return true;
 			}
 
 			// Restrict view-only to nodes which are shared
-			$node = $davNode->getNode();
 			$storage = $node->getStorage();
-			if (!$storage->instanceOfStorage('\OCA\Files_Sharing\SharedStorage')) {
+			if (!$storage->instanceOfStorage(SharedStorage::class)) {
 				return true;
 			}
 

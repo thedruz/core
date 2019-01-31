@@ -35,7 +35,7 @@ class ExtraPermissions implements IExtraPermissions {
 	 * @inheritdoc
 	 */
 	public function setPermission($app, $key, $enabled) {
-		if (!array_key_exists($app, $this->permissions)) {
+		if (!\array_key_exists($app, $this->permissions)) {
 			$this->permissions[$app] = [];
 		}
 		$this->permissions[$app][$key] = $enabled;
@@ -45,8 +45,8 @@ class ExtraPermissions implements IExtraPermissions {
 	 * @inheritdoc
 	 */
 	public function getPermission($app, $key) {
-		if (array_key_exists($app, $this->permissions) &&
-			array_key_exists($key, $this->permissions[$app])) {
+		if (\array_key_exists($app, $this->permissions) &&
+			\array_key_exists($key, $this->permissions[$app])) {
 			return $this->permissions[$app][$key];
 		}
 		return null;
@@ -56,16 +56,16 @@ class ExtraPermissions implements IExtraPermissions {
 	 * @inheritdoc
 	 */
 	public function getApps() {
-		return array_keys($this->permissions);
+		return \array_keys($this->permissions);
 	}
 
 	/**
 	 * @inheritdoc
 	 */
 	public function getKeys($app) {
-		if (!array_key_exists($app, $this->permissions)) {
+		if (!\array_key_exists($app, $this->permissions)) {
 			return [];
 		}
-		return array_keys($this->permissions[$app]);
+		return \array_keys($this->permissions[$app]);
 	}
 }

@@ -276,6 +276,13 @@ class Share implements IShare {
 	/**
 	 * @inheritdoc
 	 */
+	public function newExtraPermissions() {
+		return new ExtraPermissions();
+	}
+
+	/**
+	 * @inheritdoc
+	 */
 	public function setExtraPermissions($permissions) {
 		$this->extraPermissions = $permissions;
 		return $this;

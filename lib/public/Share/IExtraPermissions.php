@@ -65,5 +65,4 @@ interface IExtraPermissions {
 	 * @since 10.2.0
 	 */
 	public function getKeys($app);
-
 }

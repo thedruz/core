@@ -985,8 +985,7 @@ class DefaultShareProvider implements IShareProvider {
 			$share->setToken($data['token']);
 		}
 
-		$extraPermissions = $this->loadExtraPermissions($data['extra_permissions']);
-		$share->setExtraPermissions($extraPermissions);
+		$share = $this->setExtraPermissions($share, $data['extra_permissions']);
 
 		$share->setSharedBy($data['uid_initiator']);
 		$share->setShareOwner($data['uid_owner']);
@@ -1267,21 +1266,23 @@ class DefaultShareProvider implements IShareProvider {
 	/**
 	 * Load from database format (JSON string) to IExtraPermissions
 	 *
+	 * @param IShare $share
 	 * @param string $data
-	 * @return IExtraPermissions
+	 * @return IShare modified share
 	 */
-	private function loadExtraPermissions($data) {
-		$extraPermissions = new ExtraPermissions();
-		if (!is_null($data)) {
-			$extraPermissionsJson = json_decode($data, true);
+	private function setExtraPermissions($share, $data) {
+		if ($data !== null) {
+			$extraPermissions = new ExtraPermissions();
+			$extraPermissionsJson = \json_decode($data, true);
 			foreach ($extraPermissionsJson as $app => $keys) {
-				foreach($keys as $key => $enabled) {
+				foreach ($keys as $key => $enabled) {
 					$extraPermissions->setPermission($app, $key, $enabled);
 				}
 			}
+			$share->setExtraPermissions($extraPermissions);
 		}
 
-		return $extraPermissions;
+		return $share;
 	}
 
 	/**
@@ -1291,17 +1292,17 @@ class DefaultShareProvider implements IShareProvider {
 	 * @return string|null
 	 */
 	private function formatExtraPermissions($permissions) {
+		if ($permissions === null || empty($permissions->getApps())) {
+			return null;
+		}
 		$formattedPermissions = [];
-		foreach($permissions->getApps() as $app) {
+		foreach ($permissions->getApps() as $app) {
 			$formattedPermissions[$app] = [];
-			foreach($permissions->getKeys($app) as $key) {
+			foreach ($permissions->getKeys($app) as $key) {
 				$formattedPermissions[$app][$key] = $permissions->getPermission($app, $key);
 			}
 		}
 
-		if (empty($formattedPermissions)) {
-			return null;
-		}
-		return json_encode($formattedPermissions);
+		return \json_encode($formattedPermissions);
 	}
 }

@@ -792,6 +792,8 @@
 		},
 
 		/**
+		 * based on given share permission, returns all available
+		 * extra permissions which are compatible
 		 *
 		 * @param {number} permissions
 		 * @returns {Array}
@@ -830,6 +832,9 @@
 		},
 
 		/**
+		 * Returns extra share permissions for given share index, formatted as
+		 * type OC.Share.Types.ShareExtraPermission
+		 *
 		 * @param shareIndex
 		 * @returns OC.Share.Types.ShareExtraPermission[]
 		 */
@@ -849,12 +854,14 @@
 			var shareExtraPermissions = JSON.parse(share.extra_permissions);
 			_.map(this._getCompatibleExtraPermissions(share.permissions), function(extraPermission) {
 				var enabled = extraPermission.meta.default;
-				shareExtraPermissions.map(function(permission) {
-					if (permission.app === extraPermission.app &&
-						permission.name === extraPermission.id) {
-						enabled = permission.enabled;
-					}
-				});
+				if (shareExtraPermission) {
+					shareExtraPermissions.map(function(permission) {
+						if (permission.app === extraPermission.app &&
+							permission.name === extraPermission.id) {
+							enabled = permission.enabled;
+						}
+					});
+				}
 
 				var shareExtraPermission = {
 					app: extraPermission.app,

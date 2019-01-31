@@ -170,7 +170,7 @@ interface IShare {
 	 * See \OCP\Constants::PERMISSION_*
 	 *
 	 * @param int $permissions
-	 * @return \OCP\Share\IShare The modified object
+	 * @return IShare The modified object
 	 * @since 9.0.0
 	 */
 	public function setPermissions($permissions);
@@ -185,11 +185,19 @@ interface IShare {
 	public function getPermissions();
 
 	/**
+	 * Create a new extra share permissions
+	 *
+	 * @since 10.2.0
+	 * @return IExtraPermissions;
+	 */
+	public function newExtraPermissions();
+
+	/**
 	 * Set extra permissions
 	 *
 	 * @param IExtraPermissions $permissions
 	 * @since 10.2.0
-	 * @return \OCP\Share\IShare The modified object
+	 * @return IShare The modified object
 	 */
 	public function setExtraPermissions($permissions);
 	/**

@@ -41,6 +41,7 @@ use OCP\Lock\LockedException;
 use OCP\Share;
 use OCP\Share\Exceptions\GenericShareException;
 use OCP\Share\Exceptions\ShareNotFound;
+use OCP\Share\IExtraPermissions;
 use OCP\Share\IManager;
 use OCP\Share\IShare;
 use OCA\Files_Sharing\Service\NotificationPublisher;
@@ -130,43 +131,6 @@ class Share20OcsController extends OCSController {
 	}
 
 	/**
-	 * @param IShare $share
-	 * @param string[][] $formattedShareExtraPermissions
-	 * @return IShare modified share
-	 */
-	private function extractExtraPermissions(IShare $share, $formattedShareExtraPermissions) {
-		$shareExtraPermissions = $share->getExtraPermissions();
-		foreach($formattedShareExtraPermissions as $formattedPermission) {
-			$shareExtraPermissions->setPermission(
-				$formattedPermission["app"],
-				$formattedPermission["name"],
-				(bool) json_decode($formattedPermission["enabled"])
-			);
-		}
-
-		$share->setExtraPermissions($shareExtraPermissions);
-		return $share;
-	}
-
-	/**
-	 * @param IShare $share
-	 * @return array
-	 */
-	private function formatExtraPermissions(IShare $share) {
-		$permissions = $share->getExtraPermissions();
-		$formattedShareExtraPermissions = [];
-		foreach($permissions->getApps() as $app) {
-			foreach($permissions->getKeys($app) as $key) {
-				$formattedPermission['app'] = $app;
-				$formattedPermission['name'] = $key;
-				$formattedPermission['enabled'] = $permissions->getPermission($app, $key);
-				$formattedShareExtraPermissions[] = $formattedPermission;
-			}
-		}
-		return json_encode($formattedShareExtraPermissions);
-	}
-
-	/**
 	 * Convert an IShare to an array for OCS output
 	 *
 	 * @param IShare $share
@@ -184,7 +148,6 @@ class Share20OcsController extends OCSController {
 			'uid_owner' => $share->getSharedBy(),
 			'displayname_owner' => $sharedBy !== null ? $sharedBy->getDisplayName() : $share->getSharedBy(),
 			'permissions' => $share->getPermissions(),
-			'extra_permissions' => $this->formatExtraPermissions($share),
 			'stime' => $share->getShareTime() ? $share->getShareTime()->getTimestamp() : null,
 			'parent' => null,
 			'expiration' => null,
@@ -260,6 +223,23 @@ class Share20OcsController extends OCSController {
 		}
 
 		$result['mail_send'] = $share->getMailSend() ? 1 : 0;
+
+		$extraPermissions = $share->getExtraPermissions();
+		if ($extraPermissions !== null) {
+			// Share provider supports extra permissions
+			$formattedShareExtraPermissions = [];
+			foreach ($extraPermissions->getApps() as $app) {
+				foreach ($extraPermissions->getKeys($app) as $key) {
+					$formattedPermission['app'] = $app;
+					$formattedPermission['name'] = $key;
+					$formattedPermission['enabled'] = $extraPermissions->getPermission($app, $key);
+					$formattedShareExtraPermissions[] = $formattedPermission;
+				}
+			}
+			$result['extra_permissions'] = \json_encode($formattedShareExtraPermissions);
+		} else {
+			$result['extra_permissions'] = null;
+		}
 
 		return $result;
 	}
@@ -532,12 +512,15 @@ class Share20OcsController extends OCSController {
 			return new Result(null, 400, $this->l->t('Unknown share type'));
 		}
 
-
-		$formattedExtraPermissions = $this->request->getParam('extraPermissions', []);
-		$share = $this->extractExtraPermissions($share, $formattedExtraPermissions);
-
 		$share->setShareType($shareType);
 		$share->setSharedBy($this->userSession->getUser()->getUID());
+
+		try {
+			$share = $this->setExtraPermissions($share, $this->request->getParam('extraPermissions', null));
+		} catch (\Exception $e) {
+			$share->getNode()->unlock(ILockingProvider::LOCK_SHARED);
+			return new Result(null, 400, $this->l->t('Cannot parse extra share permissions'));
+		}
 
 		try {
 			$share = $this->shareManager->createShare($share);
@@ -894,9 +877,12 @@ class Share20OcsController extends OCSController {
 			return new Result(null, 400, $this->l->t('Cannot remove all permissions'));
 		}
 
-		$formattedExtraPermissions = $this->request->getParam('extraPermissions', []);
-		$share = $this->extractExtraPermissions($share, $formattedExtraPermissions);
-
+		try {
+			$share = $this->setExtraPermissions($share, $this->request->getParam('extraPermissions', null));
+		} catch (\Exception $e) {
+			$share->getNode()->unlock(ILockingProvider::LOCK_SHARED);
+			return new Result(null, 400, $this->l->t('Cannot parse extra share permissions'));
+		}
 		try {
 			$share = $this->shareManager->updateShare($share);
 		} catch (\Exception $e) {
@@ -1223,6 +1209,27 @@ class Share20OcsController extends OCSController {
 			}
 
 			$share = $this->shareManager->getShareById('ocFederatedSharing:' . $id, $recipient);
+		}
+
+		return $share;
+	}
+
+	/**
+	 * @param IShare $share
+	 * @param string[][]|null $formattedShareExtraPermissions
+	 * @return IShare modified share
+	 */
+	private function setExtraPermissions($share, $formattedShareExtraPermissions) {
+		if ($formattedShareExtraPermissions != null) {
+			$newShareExtraPermissions = $this->shareManager->newShare()->newExtraPermissions();
+			foreach ($formattedShareExtraPermissions as $formattedPermission) {
+				$newShareExtraPermissions->setPermission(
+					$formattedPermission["app"],
+					$formattedPermission["name"],
+					(bool) \json_decode($formattedPermission["enabled"])
+				);
+			}
+			$share->setExtraPermissions($newShareExtraPermissions);
 		}
 
 		return $share;

@@ -45,6 +45,7 @@ use OCP\Security\ISecureRandom;
 use OCP\Share\Exceptions\GenericShareException;
 use OCP\Share\Exceptions\ShareNotFound;
 use OCP\Share\Exceptions\TransferSharesException;
+use OCP\Share\IExtraPermissions;
 use OCP\Share\IManager;
 use OCP\Share\IProviderFactory;
 use OCP\Share\IShare;
@@ -914,6 +915,11 @@ class Manager implements IManager {
 			$update = true;
 		}
 
+		if ($this->hashExtraPermissions($share->getExtraPermissions()) !== $this->hashExtraPermissions($originalShare->getExtraPermissions())) {
+			$shareAfterUpdateEvent->setArgument('extrapermissionsupdate', true);
+			$update = true;
+		}
+
 		if ($share->getName() !== $originalShare->getName()) {
 			$shareAfterUpdateEvent->setArgument('sharenameupdated', true);
 			$shareAfterUpdateEvent->setArgument('oldname', $originalShare->getName());
@@ -1384,10 +1390,7 @@ class Manager implements IManager {
 	 * @return \OCP\Share\IShare;
 	 */
 	public function newShare() {
-		$extraPermissions = new ExtraPermissions();
-		$share = new Share($this->rootFolder, $this->userManager);
-		$share->setExtraPermissions($extraPermissions);
-		return $share;
+		return new Share($this->rootFolder, $this->userManager);
 	}
 
 	/**
@@ -1547,5 +1550,24 @@ class Manager implements IManager {
 	 */
 	public function outgoingServer2ServerSharesAllowed() {
 		return $this->config->getAppValue('files_sharing', 'outgoing_server2server_share_enabled', 'yes') === 'yes';
+	}
+
+	/**
+	 * @param IExtraPermissions|null $perms
+	 * @return string
+	 */
+	private function hashExtraPermissions($perms) {
+		if ($perms === null) {
+			return "";
+		}
+
+		$formattedPermissions = [];
+		foreach ($perms->getApps() as $app) {
+			$formattedPermissions[$app] = [];
+			foreach ($perms->getKeys($app) as $key) {
+				$formattedPermissions[$app][$key] = $perms->getPermission($app, $key);
+			}
+		}
+		return \md5(\json_encode($formattedPermissions));
 	}
 }
