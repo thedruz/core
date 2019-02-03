@@ -125,20 +125,31 @@
 		 * @returns {object}
 		 */
 		getExtraPermissionsObject: function(shareIndex) {
-			var shareWith = this.model.getShareWith(shareIndex);
+			var model = this.model;
+			var shareWith = model.getShareWith(shareIndex);
 
 			// Returns OC.Share.Types.ShareExtraPermission[]
-			var permissions = this.model.getShareExtraPermissions(shareIndex);
+			var permissions = model.getShareExtraPermissions(shareIndex);
 
 			var list = [];
 			permissions.map(function(permission) {
-				list.push(_.extend(
-					{
+				var label = model.getShareExtraPermissionLabel(permission.app, permission.name);
+				if (label) {
+					list.push({
 						cid: this.cid,
-						shareWith: shareWith
-					},
-					permission)
-				);
+						shareWith: shareWith,
+						enabled: permission.enabled,
+						app: permission.app,
+						name: permission.name,
+						label: label
+					});
+				} else {
+					OC.Notification.showTemporary(t('core', 'Share with ' +
+						'user {shareWith} has permission {name} which became unavailable. ' +
+						'Please recreate the share!',
+						{ name: permission.name, shareWith: shareWith })
+					);
+				}
 			});
 
 			return list;

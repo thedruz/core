@@ -1273,6 +1273,7 @@ class DefaultShareProvider implements IShareProvider {
 	private function setExtraPermissions($share, $data) {
 		if ($data !== null) {
 			$extraPermissions = new ExtraPermissions();
+			// FIXME: add support for JSON in Doctrine
 			$extraPermissionsJson = \json_decode($data, true);
 			foreach ($extraPermissionsJson as $app => $keys) {
 				foreach ($keys as $key => $enabled) {
@@ -1303,6 +1304,7 @@ class DefaultShareProvider implements IShareProvider {
 			}
 		}
 
+		// FIXME: add support for JSON in Doctrine
 		return \json_encode($formattedPermissions);
 	}
 }

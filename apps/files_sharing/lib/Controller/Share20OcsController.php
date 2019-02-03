@@ -1230,6 +1230,8 @@ class Share20OcsController extends OCSController {
 				);
 			}
 			$share->setExtraPermissions($newShareExtraPermissions);
+		} else {
+			$share->setExtraPermissions(null);
 		}
 
 		return $share;
