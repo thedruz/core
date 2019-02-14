@@ -121,7 +121,7 @@ class FederatedShareProviderTest extends \Test\TestCase {
 	public function tearDown(): void {
 		$this->connection->getQueryBuilder()->delete('share')->execute();
 
-		return parent::tearDown();
+		parent::tearDown();
 	}
 
 	public function testCreate() {

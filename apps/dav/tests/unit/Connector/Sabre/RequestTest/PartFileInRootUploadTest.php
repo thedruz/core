@@ -45,6 +45,6 @@ class PartFileInRootUploadTest extends UploadTest {
 			$config = \OC::$server->getConfig();
 			$this->original = $config->setSystemValue('part_file_in_storage', $this->original);
 		}
-		return parent::tearDown();
+		parent::tearDown();
 	}
 }

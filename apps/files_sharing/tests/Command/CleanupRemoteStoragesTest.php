@@ -130,7 +130,7 @@ class CleanupRemoteStoragesTest extends TestCase {
 			}
 		}
 
-		return parent::tearDown();
+		parent::tearDown();
 	}
 
 	private function doesStorageExist($numericId) {

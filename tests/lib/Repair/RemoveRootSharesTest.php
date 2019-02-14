@@ -70,7 +70,7 @@ class RemoveRootSharesTest extends \Test\TestCase {
 		$qb->delete('share');
 		$qb->execute();
 
-		return parent::tearDown();
+		parent::tearDown();
 	}
 
 	public function testRootSharesExist() {
