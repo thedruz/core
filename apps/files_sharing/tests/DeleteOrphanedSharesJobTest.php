@@ -74,7 +74,7 @@ class DeleteOrphanedSharesJobTest extends \Test\TestCase {
 		}
 	}
 
-	protected function setup() {
+	protected function setUp(): void {
 		parent::setUp();
 
 		$this->connection = \OC::$server->getDatabaseConnection();
@@ -93,7 +93,7 @@ class DeleteOrphanedSharesJobTest extends \Test\TestCase {
 		$this->job = new DeleteOrphanedSharesJob();
 	}
 
-	protected function tearDown() {
+	protected function tearDown(): void {
 		$this->connection->executeUpdate('DELETE FROM `*PREFIX*share`');
 
 		$userManager = \OC::$server->getUserManager();

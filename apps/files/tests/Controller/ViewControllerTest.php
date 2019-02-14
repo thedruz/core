@@ -69,7 +69,7 @@ class ViewControllerTest extends TestCase {
 	/** @var Folder | \PHPUnit_Framework_MockObject_MockObject */
 	private $rootFolder;
 
-	public function setUp() {
+	public function setUp(): void {
 		parent::setUp();
 		$this->request = $this->createMock('\OCP\IRequest');
 		$this->urlGenerator = $this->createMock('\OCP\IURLGenerator');

@@ -45,7 +45,7 @@ class FilesSearchReportPluginTest extends \Test\TestCase {
 	/** @var FilesSearchReportPlugin|\PHPUnit_Framework_MockObject_MockObject */
 	private $plugin;
 
-	public function setUp() {
+	public function setUp(): void {
 		parent::setUp();
 
 		$this->tree = $this->getMockBuilder(Tree::class)

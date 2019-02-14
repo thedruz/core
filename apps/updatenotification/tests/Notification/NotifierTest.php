@@ -34,7 +34,7 @@ class NotifierTest extends TestCase {
 	/** @var IFactory|\PHPUnit_Framework_MockObject_MockObject */
 	protected $l10nFactory;
 
-	public function setUp() {
+	public function setUp(): void {
 		parent::setUp();
 
 		$this->notificationManager = $this->createMock('OCP\Notification\IManager');

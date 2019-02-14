@@ -56,7 +56,7 @@ class ResetPasswordTest extends TestCase {
 	private $lostController;
 	/** @var  ResetPassword */
 	private $resetPassword;
-	protected function setUp() {
+	protected function setUp(): void {
 		parent::setUp();
 
 		$this->userManager = $this->createMock(IUserManager::class);

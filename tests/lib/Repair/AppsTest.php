@@ -45,7 +45,7 @@ class AppsTest extends TestCase {
 	/** @var \OC_Defaults | \PHPUnit_Framework_MockObject_MockObject */
 	private $defaults;
 
-	protected function setUp() {
+	protected function setUp(): void {
 		parent::setUp();
 		$this->appManager = $this->createMock(IAppManager::class);
 		$this->defaults = $this->createMock(\OC_Defaults::class);

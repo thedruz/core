@@ -20,7 +20,7 @@ use Test\TestCase;
  */
 class EventEmitterTraitTest extends TestCase {
 	use EventEmitterTrait;
-	protected function setUp() {
+	protected function setUp(): void {
 		return parent::setUp();
 	}
 

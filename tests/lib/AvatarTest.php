@@ -27,7 +27,7 @@ class AvatarTest extends \Test\TestCase {
 	/** @var \OC\User\User | \PHPUnit_Framework_MockObject_MockObject $user */
 	private $user;
 
-	public function setUp() {
+	public function setUp(): void {
 		parent::setUp();
 
 		$this->storage = $this->createMock(IStorage::class);

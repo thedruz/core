@@ -52,7 +52,7 @@ class AddressBookImplTest extends TestCase {
 	/** @var  VCard | \PHPUnit_Framework_MockObject_MockObject */
 	private $vCard;
 
-	public function setUp() {
+	public function setUp(): void {
 		parent::setUp();
 
 		$this->addressBookInfo = [

@@ -32,7 +32,7 @@ class DisableExtraThemesTest extends TestCase {
 	/** @var IOutput|\PHPUnit_Framework_MockObject_MockObject */
 	protected $output;
 
-	protected function setUp() {
+	protected function setUp(): void {
 		parent::setUp();
 
 		$this->config = $this->createMock(IConfig::class);

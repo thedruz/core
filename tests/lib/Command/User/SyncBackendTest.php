@@ -57,7 +57,7 @@ class SyncBackendTest extends TestCase {
 	/** @var UserInterface | \PHPUnit_Framework_MockObject_MockObject */
 	private $dummyBackend;
 
-	public function setUp() {
+	public function setUp(): void {
 		parent::setUp();
 
 		$this->config = $this->createMock(IConfig::class);

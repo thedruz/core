@@ -71,7 +71,7 @@ class FedShareManagerTest extends TestCase {
 	/** @var EventDispatcherInterface | \PHPUnit_Framework_MockObject_MockObject */
 	private $eventDispatcher;
 
-	protected function setUp() {
+	protected function setUp(): void {
 		parent::setUp();
 
 		$this->federatedShareProvider = $this->getMockBuilder(

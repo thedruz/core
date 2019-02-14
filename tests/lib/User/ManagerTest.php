@@ -46,7 +46,7 @@ class ManagerTest extends TestCase {
 	 */
 	protected $userSearch;
 
-	public function setUp() {
+	public function setUp(): void {
 		parent::setUp();
 
 		$this->overwriteService('EventDispatcher', new EventDispatcher());

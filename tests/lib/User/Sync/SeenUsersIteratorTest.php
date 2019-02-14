@@ -45,7 +45,7 @@ class SeenUsersIteratorTest extends TestCase {
 
 	const TEST_BACKEND = 'TestBackend';
 
-	public function setUp() {
+	public function setUp(): void {
 		parent::setUp();
 
 		$this->mapper = $this->createMock(AccountMapper::class);

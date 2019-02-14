@@ -68,7 +68,7 @@ class TrustedServersTest extends TestCase {
 	/** @var  \PHPUnit_Framework_MockObject_MockObject | EventDispatcherInterface */
 	private $dispatcher;
 
-	public function setUp() {
+	public function setUp(): void {
 		parent::setUp();
 
 		$this->dbHandler = $this->getMockBuilder('\OCA\Federation\DbHandler')

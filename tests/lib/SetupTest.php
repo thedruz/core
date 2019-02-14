@@ -27,7 +27,7 @@ class SetupTest extends \Test\TestCase {
 	/** @var \OCP\Security\ISecureRandom | \PHPUnit_Framework_MockObject_MockObject */
 	protected $random;
 
-	protected function setUp() {
+	protected function setUp(): void {
 		parent::setUp();
 
 		$this->config = $this->createMock('\OCP\IConfig');

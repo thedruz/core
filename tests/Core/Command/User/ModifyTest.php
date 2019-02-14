@@ -50,7 +50,7 @@ class ModifyTest extends TestCase {
 	/** @var  OutputInterface | \PHPUnit_Framework_MockObject_MockObject */
 	protected $consoleOutput;
 
-	protected function setUp() {
+	protected function setUp(): void {
 		parent::setUp();
 
 		$this->userManager = $this->createMock(IUserManager::class);

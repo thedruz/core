@@ -26,7 +26,7 @@ class ManagerTest extends TestCase {
 	/** @var \OCP\IConfig|\PHPUnit_Framework_MockObject_MockObject */
 	protected $config;
 
-	protected function setUp() {
+	protected function setUp(): void {
 		parent::setUp();
 
 		$this->request = $this->getMockBuilder('OCP\IRequest')

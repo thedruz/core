@@ -53,7 +53,7 @@ class LoginControllerTest extends TestCase {
 	/** @var Manager | \PHPUnit_Framework_MockObject_MockObject */
 	private $twoFactorManager;
 
-	public function setUp() {
+	public function setUp(): void {
 		parent::setUp();
 		$this->request = $this->createMock(IRequest::class);
 		$this->userManager = $this->createMock(IUserManager::class);

@@ -104,7 +104,7 @@ class Share20OcsControllerTest extends TestCase {
 	/** @var SharingBlacklist */
 	private $sharingBlacklist;
 
-	protected function setUp() {
+	protected function setUp(): void {
 		$this->shareManager = $this->getMockBuilder(IManager::class)
 			->disableOriginalConstructor()
 			->getMock();
@@ -158,7 +158,7 @@ class Share20OcsControllerTest extends TestCase {
 		);
 	}
 
-	public function tearDown() {
+	public function tearDown(): void {
 		parent::tearDown();
 	}
 

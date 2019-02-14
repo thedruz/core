@@ -57,7 +57,7 @@ class MountProviderTest extends TestCase {
 	/** @var ILogger | \PHPUnit_Framework_MockObject_MockObject */
 	private $logger;
 
-	public function setUp() {
+	public function setUp(): void {
 		parent::setUp();
 
 		$this->config = $this->createMock(IConfig::class);

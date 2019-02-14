@@ -55,7 +55,7 @@ class NotificationsTest extends \Test\TestCase {
 	/** @var  IConfig | \PHPUnit_Framework_MockObject_MockObject */
 	private $config;
 
-	public function setUp() {
+	public function setUp(): void {
 		parent::setUp();
 
 		$this->jobList = $this->createMock(IJobList::class);
