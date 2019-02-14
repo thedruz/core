@@ -30,7 +30,7 @@ class EnvironmentHelperTest extends TestCase {
 
 	public function setUp(): void {
 		$this->environmentHelper = new EnvironmentHelper();
-		return parent::setUp();
+		parent::setUp();
 	}
 
 	public function testGetServerRoot() {
