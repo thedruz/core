@@ -156,6 +156,7 @@ class FavoritesContext implements Context {
 			$baseUrl, $user, $password, "REPORT", "/", null, $body, null,
 			$this->featureContext->getDavPathVersion()
 		);
+		$this->featureContext->setLastRequestUsername($user);
 		$this->featureContext->setResponse($response);
 	}
 	

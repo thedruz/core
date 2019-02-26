@@ -210,6 +210,7 @@ trait Auth {
 	 */
 	public function userRequestsURLWithUsingBasicAuth($user, $url, $method) {
 		$authString = "$user:" . $this->getPasswordForUser($user);
+		$this->setLastRequestUsername($user);
 		$this->sendRequest(
 			$url, $method, 'basic ' . \base64_encode($authString)
 		);

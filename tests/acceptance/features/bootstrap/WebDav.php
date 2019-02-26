@@ -2297,7 +2297,7 @@ trait WebDav {
 			);
 		}
 		$fullWebDavPath = \ltrim(
-			\parse_url($this->response->getEffectiveUrl(), PHP_URL_PATH) . "/",
+			$this->getBasePath() . "/" . $this->getDavFilesPath($this->getLastRequestUsername()) . "/",
 			"/"
 		);
 		$multistatusResults = $this->responseXml["value"];
