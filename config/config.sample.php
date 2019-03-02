@@ -285,6 +285,13 @@ $CONFIG = array(
 'accounts.enable_medial_search' => true,
 
 /**
+ * Allow medial search on group properties like gid and other search terms.
+ * Allows finding 'test' when searching for 'es'.
+ * It is used in group database queries and may slow down group search.
+ */
+'groups.enable_medial_search' => true,
+
+/**
  * Defines the minimum characters entered before a search returns results for 
  * users or groups in the share autocomplete form. Lower values increase search
  * time especially for large backends.

@@ -184,8 +184,14 @@ class Database extends Backend implements IUserBackend, IProvidesHomeBackend, IP
 		$searchLike = '';
 		if ($search !== '') {
 			$search = \OC::$server->getDatabaseConnection()->escapeLikeParameter($search);
-			$parameters[] = '%' . $search . '%';
-			$parameters[] = '%' . $search . '%';
+			$allowMedialSearches = \OC::$server->getConfig()->getSystemValue("accounts.enable_medial_search", true);
+			if ($allowMedialSearches) {
+				$parameters[] = '%' . $search . '%';
+				$parameters[] = '%' . $search . '%';
+			} else {
+				$parameters[] = $search . '%';
+				$parameters[] = $search . '%';
+			}
 			$searchLike = ' WHERE LOWER(`displayname`) LIKE LOWER(?) OR '
 				. 'LOWER(`uid`) LIKE LOWER(?)';
 		}
@@ -273,7 +279,12 @@ class Database extends Backend implements IUserBackend, IProvidesHomeBackend, IP
 		$searchLike = '';
 		if ($search !== '') {
 			$search = \OC::$server->getDatabaseConnection()->escapeLikeParameter($search);
-			$parameters[] = '%' . $search . '%';
+			$allowMedialSearches = \OC::$server->getConfig()->getSystemValue("accounts.enable_medial_search", true);
+			if ($allowMedialSearches) {
+				$parameters[] = '%' . $search . '%';
+			} else {
+				$parameters[] = $search . '%';
+			}
 			$searchLike = ' WHERE LOWER(`uid`) LIKE LOWER(?)';
 		}
 
