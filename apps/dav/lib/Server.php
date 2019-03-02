@@ -26,7 +26,6 @@
  */
 namespace OCA\DAV;
 
-use OC\Files\Filesystem;
 use OCA\DAV\AppInfo\PluginManager;
 use OCA\DAV\CalDAV\Schedule\IMipPlugin;
 use OCA\DAV\CardDAV\ImageExportPlugin;

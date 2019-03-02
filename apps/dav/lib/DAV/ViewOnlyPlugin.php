@@ -24,15 +24,12 @@ namespace OCA\DAV\DAV;
 use OCA\DAV\Connector\Sabre\Exception\Forbidden;
 use OCA\DAV\Connector\Sabre\File as DavFile;
 use OCA\Files_Sharing\SharedStorage;
-use OCP\Files\File;
-use OCP\Files\Folder;
-use OCP\Files\InvalidPathException;
+use OCP\Files\FileInfo;
 use Sabre\DAV\Exception\ServiceUnavailable;
 use Sabre\DAV\Server;
 use Sabre\DAV\ServerPlugin;
 use Sabre\HTTP\RequestInterface;
 use Sabre\DAV\Exception\NotFound;
-use \OCP\Files\NotFoundException;
 
 /**
  * Sabre plugin for the the file secure-view:
@@ -41,12 +38,6 @@ class ViewOnlyPlugin extends ServerPlugin {
 
 	/** @var \Sabre\DAV\Server $server */
 	private $server;
-
-	/**
-	 * ViewOnlyPlugin plugin
-	 */
-	public function __construct() {
-	}
 
 	/**
 	 * This initializes the plugin.
@@ -67,6 +58,8 @@ class ViewOnlyPlugin extends ServerPlugin {
 	}
 
 	/**
+	 * Disallow download via DAV Api in case file being received share
+	 * and having special permission
 	 *
 	 * @param RequestInterface $request request object
 	 * @return boolean
@@ -80,35 +73,43 @@ class ViewOnlyPlugin extends ServerPlugin {
 
 		try {
 			$davNode = $this->server->tree->getNodeForPath($path);
-			if (!$davNode instanceof DavFile) {
+			if ($davNode === null || !$davNode instanceof DavFile) {
 				return true;
 			}
 
-			$node = $davNode->getNode();
-			if (!($node instanceof File || $node instanceof Folder)) {
-				return true;
-			}
-
-			// Restrict view-only to nodes which are shared
-			$storage = $node->getStorage();
-			if (!$storage->instanceOfStorage(SharedStorage::class)) {
-				return true;
-			}
-
-			// Extract extra permissions
-			/** @var \OCA\Files_Sharing\SharedStorage $storage */
-			$share = $storage->getShare();
-
-			// Check if read-only and on whether permission can download is both set and disabled.
-			$canDownload = $share->getExtraPermissions()->getPermission('dav', 'can-download');
-			if (!$node->isUpdateable() && $canDownload !== null && !$canDownload) {
-				throw new Forbidden('File is in secure-view mode and cannot be directly downloaded.');
+			$fileInfo = $davNode->getFileInfo();
+			if (!$this->checkFileInfo($fileInfo)) {
+				throw new Forbidden('File or folder is in secure-view mode and cannot be directly downloaded.');
 			}
 		} catch (NotFound $e) {
-		} catch (NotFoundException $e) {
-		} catch (InvalidPathException $e) {
 		}
 
+		return true;
+	}
+
+
+	/**
+	 * Check FileInfo for share permission can-download
+	 *
+	 * @param FileInfo $fileInfo
+	 * @return bool
+	 */
+	private function checkFileInfo(FileInfo $fileInfo) {
+		// Restrict view-only to nodes which are shared
+		$storage = $fileInfo->getStorage();
+		if (!$storage->instanceOfStorage(SharedStorage::class)) {
+			return true;
+		}
+
+		// Extract extra permissions
+		/** @var \OCA\Files_Sharing\SharedStorage $storage */
+		$share = $storage->getShare();
+
+		// Check if read-only and on whether permission can download is both set and disabled.
+		$canDownload = $share->getExtraPermissions()->getPermission('core', 'can-download');
+		if (!$fileInfo->isUpdateable() && $canDownload !== null && !$canDownload) {
+			return false;
+		}
 		return true;
 	}
 }

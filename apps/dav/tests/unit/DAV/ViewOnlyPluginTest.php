@@ -20,7 +20,7 @@
  */
 namespace OCA\DAV\Tests\unit\DAV;
 
-use OCA\DAV\DAV\ViewOnlyPlugin;
+use OCA\DAV\DAV\ViewOnly\Plugin as ViewOnlyPlugin;
 use OCA\Files_Sharing\SharedStorage;
 use OCA\DAV\Connector\Sabre\File as DavFile;
 use OCP\Files\File;
