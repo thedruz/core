@@ -38,7 +38,7 @@
 	 * @typedef {object} OC.Share.Types.ShareInfo
 	 * @property {number} share_type
 	 * @property {number} permissions
-	 * @property {string} extra_permissions
+	 * @property {string} attributes
 	 * @property {number} file_source optional
 	 * @property {number} item_source
 	 * @property {string} token
@@ -58,19 +58,19 @@
 	 */
 
 	/**
-	 * @typedef {object} OC.Share.Types.AvailableShareExtraPermission
+	 * @typedef {object} OC.Share.Types.AvailableShareAttribute
 	 * @property {string} name
 	 * @property {bool}   default
-	 * @property {string} app
+	 * @property {string} scope
 	 * @property {string} label
 	 * @property {number[]} incompatiblePermissions
 	 */
 
 	/**
-	 * @typedef {object} OC.Share.Types.ShareExtraPermission
+	 * @typedef {object} OC.Share.Types.ShareAttribute
 	 * @property {string} name
 	 * @property {bool}   enabled
-	 * @property {string} app
+	 * @property {string} scope
 	 */
 
 	/**
@@ -102,9 +102,9 @@
 		_linkSharesCollection: null,
 
 		/**
-		 * @type {OC.Share.Types.AvailableShareExtraPermission[]} available extra permissions for this file/folder share
+		 * @type {OC.Share.Types.AvailableShareAttribute[]} available extra permissions for this file/folder share
 		 */
-		_availableExtraPermissions: null,
+		_availableAttributes: null,
 
 		initialize: function(attributes, options) {
 			if(!_.isUndefined(options.configModel)) {
@@ -116,7 +116,7 @@
 			}
 
 			this._linkSharesCollection = new OC.Share.SharesCollection();
-			this._availableExtraPermissions = [];
+			this._availableAttributes = [];
 
 			_.bindAll(this, 'addShare');
 			OC.Plugins.attach('OC.Share.ShareItemModel', this);
@@ -145,10 +145,10 @@
 			return this.fileInfoModel;
 		},
 
-		addShare: function(attributes, options) {
-			var shareType = attributes.shareType;
+		addShare: function(properties, options) {
+			var shareType = properties.shareType;
 			options = options || {};
-			attributes = _.extend({}, attributes);
+			properties = _.extend({}, properties);
 
 			// Default permissions are Edit (CRUD) and Share
 			// Check if these permissions are possible
@@ -166,29 +166,29 @@
 			if (this.configModel.get('isResharingAllowed') && (this.sharePermissionPossible())) {
 				possiblePermissions = possiblePermissions | OC.PERMISSION_SHARE;
 			}
-			attributes.permissions = defaultPermissions & possiblePermissions;
+			properties.permissions = defaultPermissions & possiblePermissions;
 
 			// set default allowed extra permissions for this share
-			var extraPermissions = [];
-			var allowedExtraPermissions = this._getAllowedExtraPermissions(attributes.permissions);
-			_.map(allowedExtraPermissions, function(extraPermission) {
-				extraPermissions.push({
-					app : extraPermission.app,
-					name: extraPermission.name,
-					enabled: extraPermission.default
+			var shareAttributes = [];
+			var allowedAttributes = this._getAllowedAttributes(properties.permissions);
+			_.map(allowedAttributes, function(attribute) {
+				shareAttributes.push({
+					scope : attribute.scope,
+					name: attribute.name,
+					enabled: attribute.default
 				});
 			});
-			attributes.extraPermissions = extraPermissions;
+			properties.attributes = shareAttributes;
 
-			if (_.isUndefined(attributes.path)) {
-				attributes.path = this.fileInfoModel.getFullPath();
+			if (_.isUndefined(properties.path)) {
+				properties.path = this.fileInfoModel.getFullPath();
 			}
 
 			var self = this;
 			return $.ajax({
 				type: 'POST',
 				url: this._getUrl('shares'),
-				data: attributes,
+				data: properties,
 				dataType: 'json'
 			}).done(function() {
 				self.fetch().done(function() {
@@ -211,42 +211,42 @@
 			});
 		},
 
-		updateShare: function(shareId, attrs, options) {
+		updateShare: function(shareId, properties, options) {
 			var self = this;
 			options = options || {};
 
-			var extraPermissions = [];
-			var compatibleExtraPermissions = this._getAllowedExtraPermissions(attrs.permissions);
-			compatibleExtraPermissions.map(function(allowedExtraPermission) {
+			var shareAttributes = [];
+			var compatibleAttributes = this._getAllowedAttributes(properties.permissions);
+			compatibleAttributes.map(function(allowedAttribute) {
 				// Check existing extra permissions which are compatible
 				var found = false;
-				attrs.extraPermissions.map(function(currentExtraPermission) {
-					if (currentExtraPermission.name === allowedExtraPermission.name
-						&& currentExtraPermission.app === allowedExtraPermission.app) {
+				properties.attributes.map(function(currentAttribute) {
+					if (currentAttribute.name === allowedAttribute.name
+						&& currentAttribute.scope === allowedAttribute.scope) {
 						found = true;
-						extraPermissions.push({
-							app : currentExtraPermission.app,
-							name: currentExtraPermission.name,
-							enabled: currentExtraPermission.enabled
+						shareAttributes.push({
+							scope : currentAttribute.scope,
+							name: currentAttribute.name,
+							enabled: currentAttribute.enabled
 						});
 					}
 				});
 
 				// if new permissions became available, set default
 				if (!found) {
-					extraPermissions.push({
-						app : allowedExtraPermission.app,
-						name: allowedExtraPermission.name,
-						enabled: allowedExtraPermission.default
+					shareAttributes.push({
+						scope : allowedAttribute.scope,
+						name: allowedAttribute.name,
+						enabled: allowedAttribute.default
 					});
 				}
 			});
-			attrs.extraPermissions = extraPermissions;
+			properties.attributes = shareAttributes;
 
 			return $.ajax({
 				type: 'PUT',
 				url: this._getUrl('shares/' + encodeURIComponent(shareId)),
-				data: attrs,
+				data: properties,
 				dataType: 'json'
 			}).done(function() {
 				self.fetch({
@@ -831,72 +831,71 @@
 		},
 
 		/**
-		 * based on given share permission, returns all available
-		 * extra permissions which are compatible
+		 * Based on given share permission, returns all available
+		 * share attributes which are compatible
 		 *
 		 * @param {number} permissions
-		 * @returns {OC.Share.Types.AvailableShareExtraPermission[]}
+		 * @returns {OC.Share.Types.AvailableShareAttribute[]}
 		 * @private
 		 */
-		_getAllowedExtraPermissions: function(permissions) {
+		_getAllowedAttributes: function(permissions) {
 			var result = [];
 
-			for(var i in this._availableExtraPermissions) {
+			for(var i in this._availableAttributes) {
 				var compatible = true;
-				var availPerm = this._availableExtraPermissions[i];
-				for(var j in availPerm.incompatiblePermissions) {
-					if (this._hasPermission(permissions, availPerm.incompatiblePermissions[j])) {
+				var availAttr = this._availableAttributes[i];
+				for(var j in availAttr.incompatiblePermissions) {
+					if (this._hasPermission(permissions, availAttr.incompatiblePermissions[j])) {
 						compatible = false;
 					}
 				}
 
 				if (compatible) {
-					result.push(availPerm);
+					result.push(availAttr);
 				}
 			}
 
-			return result
+			return result;
 		},
 
 		/**
-		 * Returns extra share permissions for given share index, formatted as
-		 * type OC.Share.Types.ShareExtraPermission
+		 * Returns share attributes for given share index
 		 *
 		 * @param shareIndex
-		 * @returns OC.Share.Types.ShareExtraPermission[]
+		 * @returns OC.Share.Types.ShareAttribute[]
 		 */
-		getShareExtraPermissions: function(shareIndex) {
+		getShareAttributes: function(shareIndex) {
 			/** @type OC.Share.Types.ShareInfo **/
 			var share = this.get('shares')[shareIndex];
 			if(!_.isObject(share)) {
 				throw "Unknown Share";
 			}
 
-			if (_.isUndefined(share.extra_permissions) || _.isUndefined(share.permissions)) {
+			if (_.isUndefined(share.attributes) || _.isUndefined(share.permissions)) {
 				return [];
 			}
 
-			// Add extra permissions for this share
-			var currentExtraPermissions = JSON.parse(share.extra_permissions);
-			if (currentExtraPermissions) {
-				return currentExtraPermissions;
+			// Add attributes for this share
+			var currentAttributes = JSON.parse(share.attributes);
+			if (currentAttributes) {
+				return currentAttributes;
 			}
 			return [];
 		},
 
 		/**
-		 * Returns extra share permission label for given perm app and name. If
-		 * extra permission does not exist, null is returned.
+		 * Returns share attribute label for given attribute scope and name. If
+		 * attribute does not exist, null is returned.
 		 *
-		 * @param app
+		 * @param scope
 		 * @param name
 		 * @returns string|null
 		 */
-		getShareExtraPermissionLabel: function(app, name) {
-			for(var i in this._availableExtraPermissions) {
-				if (this._availableExtraPermissions[i].app === app
-					&& this._availableExtraPermissions[i].name === name) {
-					return this._availableExtraPermissions[i].label;
+		getShareAttributeLabel: function(scope, name) {
+			for(var i in this._availableAttributes) {
+				if (this._availableAttributes[i].scope === scope
+					&& this._availableAttributes[i].name === name) {
+					return this._availableAttributes[i].label;
 				}
 			}
 			return null;
@@ -905,33 +904,33 @@
 		/**
 		 * Apps can register their extra share permissions
 		 *
-		 * @param {string}   $appId
-		 * @param {string}   $permissionName
-		 * @param {string}   $permissionLabel
-		 * @param {boolean}  $permissionDefault
+		 * @param {string}   $scopeId
+		 * @param {string}   $attributeName
+		 * @param {string}   $attributeLabel
+		 * @param {boolean}  $attributeDefault
 		 * @param {number[]} $incompatiblePermissions
 		 */
-		registerExtraSharePermission: function($appId, $permissionName, $permissionLabel, $permissionDefault, $incompatiblePermissions) {
-			/** @type OC.Share.Types.AvailableShareExtraPermission */
-			var extraPermission = {
-				app: $appId,
-				name: $permissionName,
+		registerShareAttribute: function($scopeId, $attributeName, $attributeLabel, $attributeDefault, $incompatiblePermissions) {
+			/** @type OC.Share.Types.AvailableShareAttribute */
+			var shareAttributes = {
+				scope: $scopeId,
+				name: $attributeName,
 				incompatiblePermissions: $incompatiblePermissions,
-				default: $permissionDefault,
-				label: $permissionLabel
+				default: $attributeDefault,
+				label: $attributeLabel
 			};
 
 			// Add extra permission or update if already existing
 			var exists = false;
-			for(var i in this._availableExtraPermissions) {
-				if (this._availableExtraPermissions[i].app === $appId
-					&& this._availableExtraPermissions[i].name === $permissionName) {
-					this._availableExtraPermissions[i] = extraPermission;
+			for(var i in this._availableAttributes) {
+				if (this._availableAttributes[i].scope === $scopeId
+					&& this._availableAttributes[i].name === $attributeName) {
+					this._availableAttributes[i] = shareAttributes;
 					exists = true;
 				}
 			}
 			if (!exists) {
-				this._availableExtraPermissions.push(extraPermission);
+				this._availableAttributes.push(shareAttributes);
 			}
 
 		}

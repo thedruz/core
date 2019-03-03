@@ -66,10 +66,10 @@
 			'</span>' +
 			'{{/if}}' +
 			'</div>' +
-			'<div class="extraPermission"">' +
-			'{{#each extraPermissions}}' +
+			'<div class="attributes"">' +
+			'{{#each attributes}}' +
 			'<span class="shareOption">' +
-			'<input id="can-{{name}}-{{cid}}-{{shareWith}}" type="checkbox" name="{{name}}" class="extra-permissions checkbox" {{#if enabled}}checked="checked"{{/if}} data-app="{{app}}" data-enabled="{{enabled}}""/>' +
+			'<input id="can-{{name}}-{{cid}}-{{shareWith}}" type="checkbox" name="{{name}}" class="attributes checkbox" {{#if enabled}}checked="checked"{{/if}} data-scope="{{scope}}" data-enabled="{{enabled}}""/>' +
 			'<label for="can-{{name}}-{{cid}}-{{shareWith}}">{{label}}</label>' +
 			'</span>' +
 			'{{/each}}' +
@@ -124,30 +124,30 @@
 		 * @param shareIndex
 		 * @returns {object}
 		 */
-		getExtraPermissionsObject: function(shareIndex) {
+		getAttributesObject: function(shareIndex) {
 			var model = this.model;
 			var shareWith = model.getShareWith(shareIndex);
 
-			// Returns OC.Share.Types.ShareExtraPermission[]
-			var permissions = model.getShareExtraPermissions(shareIndex);
+			// Returns OC.Share.Types.ShareAttribute[]
+			var attributes = model.getShareAttributes(shareIndex);
 
 			var list = [];
-			permissions.map(function(permission) {
-				var label = model.getShareExtraPermissionLabel(permission.app, permission.name);
+			attributes.map(function(attribute) {
+				var label = model.getShareAttributeLabel(attribute.scope, attribute.name);
 				if (label) {
 					list.push({
 						cid: this.cid,
 						shareWith: shareWith,
-						enabled: permission.enabled,
-						app: permission.app,
-						name: permission.name,
+						enabled: attribute.enabled,
+						scope: attribute.scope,
+						name: attribute.name,
 						label: label
 					});
 				} else {
 					OC.Notification.showTemporary(t('core', 'Share with ' +
-						'user {shareWith} has permission {name} which became unavailable. ' +
+						'user {shareWith} has attribute {name} which became unavailable. ' +
 						'Please recreate the share!',
-						{ name: permission.name, shareWith: shareWith })
+						{ name: attribute.name, shareWith: shareWith })
 					);
 				}
 			});
@@ -179,7 +179,7 @@
 				hasCreatePermission: this.model.hasCreatePermission(shareIndex),
 				hasUpdatePermission: this.model.hasUpdatePermission(shareIndex),
 				hasDeletePermission: this.model.hasDeletePermission(shareIndex),
-				extraPermissions: this.getExtraPermissionsObject(shareIndex),
+				attributes: this.getAttributesObject(shareIndex),
 				wasMailSent: this.model.notificationMailWasSent(shareIndex),
 				shareWith: shareWith,
 				shareWithDisplayName: shareWithDisplayName,
@@ -324,18 +324,18 @@
 			});
 
 			// Check extra share permissions
-			var extraPermissions = [];
-			$('.extra-permissions', $li).each(function(index, checkbox) {
+			var attributes = [];
+			$('.attributes', $li).each(function(index, checkbox) {
 				var checked = $(checkbox).is(':checked');
 				$(checkbox).prop('enabled', checked);
-				extraPermissions.push({
-					app : $(checkbox).data('app'),
+				attributes.push({
+					scope : $(checkbox).data('scope'),
 					name: $(checkbox).attr('name'),
 					enabled: checked
 				});
 			});
 
-			this.model.updateShare(shareId, {permissions: permissions, extraPermissions: extraPermissions});
+			this.model.updateShare(shareId, {permissions: permissions, attributes: attributes});
 		},
 
 		onCrudsToggle: function(event) {

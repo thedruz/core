@@ -45,7 +45,7 @@ use OCP\Security\ISecureRandom;
 use OCP\Share\Exceptions\GenericShareException;
 use OCP\Share\Exceptions\ShareNotFound;
 use OCP\Share\Exceptions\TransferSharesException;
-use OCP\Share\IExtraPermissions;
+use OCP\Share\IAttributes;
 use OCP\Share\IManager;
 use OCP\Share\IProviderFactory;
 use OCP\Share\IShare;
@@ -642,7 +642,7 @@ class Manager implements IManager {
 			'shareType' => $share->getShareType(),
 			'uidOwner' => $share->getSharedBy(),
 			'permissions' => $share->getPermissions(),
-			'extraPermissions' => $share->getExtraPermissions(),
+			'attributes' => $share->getattributes(),
 			'fileSource' => $share->getNode()->getId(),
 			'expiration' => $share->getExpirationDate(),
 			'token' => $share->getToken(),
@@ -670,7 +670,7 @@ class Manager implements IManager {
 			'shareType' => $share->getShareType(),
 			'uidOwner' => $share->getSharedBy(),
 			'permissions' => $share->getPermissions(),
-			'extraPermissions' => $share->getExtraPermissions(),
+			'attributes' => $share->getAttributes(),
 			'fileSource' => $share->getNode()->getId(),
 			'expiration' => $share->getExpirationDate(),
 			'token' => $share->getToken(),
@@ -915,8 +915,8 @@ class Manager implements IManager {
 			$update = true;
 		}
 
-		if ($this->hashExtraPermissions($share->getExtraPermissions()) !== $this->hashExtraPermissions($originalShare->getExtraPermissions())) {
-			$shareAfterUpdateEvent->setArgument('extrapermissionsupdate', true);
+		if ($this->hashAttributes($share->getAttributes()) !== $this->hashAttributes($originalShare->getAttributes())) {
+			$shareAfterUpdateEvent->setArgument('attributesupdate', true);
 			$update = true;
 		}
 
@@ -1553,19 +1553,19 @@ class Manager implements IManager {
 	}
 
 	/**
-	 * @param IExtraPermissions|null $perms
+	 * @param IAttributes|null $perms
 	 * @return string
 	 */
-	private function hashExtraPermissions($perms) {
+	private function hashAttributes($perms) {
 		if ($perms === null) {
 			return "";
 		}
 
 		$formattedPermissions = [];
-		foreach ($perms->getApps() as $app) {
-			$formattedPermissions[$app] = [];
-			foreach ($perms->getKeys($app) as $key) {
-				$formattedPermissions[$app][$key] = $perms->getPermission($app, $key);
+		foreach ($perms->getScopes() as $scope) {
+			$formattedPermissions[$scope] = [];
+			foreach ($perms->getKeys($scope) as $key) {
+				$formattedPermissions[$scope][$key] = $perms->getAttribute($scope, $key);
 			}
 		}
 		return \md5(\json_encode($formattedPermissions));

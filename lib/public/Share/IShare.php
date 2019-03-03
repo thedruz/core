@@ -185,28 +185,29 @@ interface IShare {
 	public function getPermissions();
 
 	/**
-	 * Create a new extra share permissions
+	 * Create share attributes object
 	 *
 	 * @since 10.2.0
-	 * @return IExtraPermissions;
+	 * @return IAttributes;
 	 */
-	public function newExtraPermissions();
+	public function newAttributes();
 
 	/**
-	 * Set extra permissions
+	 * Set share attributes
 	 *
-	 * @param IExtraPermissions $permissions
+	 * @param IAttributes $attributes
 	 * @since 10.2.0
 	 * @return IShare The modified object
 	 */
-	public function setExtraPermissions($permissions);
+	public function setAttributes($attributes);
+
 	/**
-	 * Get extra permissions
+	 * Get share attributes
 	 *
-	 * @return IExtraPermissions
+	 * @return IAttributes
 	 * @since 10.2.0
 	 */
-	public function getExtraPermissions();
+	public function getAttributes();
 
 	/**
 	 * Set the expiration date

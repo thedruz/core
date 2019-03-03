@@ -21,48 +21,48 @@
 namespace OCP\Share;
 
 /**
- * Interface IExtraPermission
+ * Interface IAttributes
  *
  * @package OCP\Share
  * @since 10.2.0
  */
-interface IExtraPermissions {
+interface IAttributes {
 
 	/**
-	 * Sets a permission. If the key did not exist before it will be created.
+	 * Sets an attribute. If the key did not exist before it will be created.
 	 *
-	 * @param string $app app
+	 * @param string $scope scope
 	 * @param string $key key
 	 * @param bool $enabled enabled
 	 * @since 10.2.0
 	 */
-	public function setPermission($app, $key, $enabled);
+	public function setAttribute($scope, $key, $enabled);
 
 	/**
-	 * Checks if permission for given app and key is enabled.
-	 * If permission does not exist, returns null
+	 * Checks if attribute for given scope id and key is enabled.
+	 * If attribute does not exist, returns null
 	 *
-	 * @param string $app app
+	 * @param string $scope scope
 	 * @param string $key key
 	 * @return bool|null
 	 * @since 10.2.0
 	 */
-	public function getPermission($app, $key);
+	public function getAttribute($scope, $key);
 
 	/**
-	 * Get all apps for which extra permissions are set
+	 * Get all registered scopes for which attributes are set
 	 *
-	 * @return string[] apps
+	 * @return string[] scope
 	 * @since 10.2.0
 	 */
-	public function getApps();
+	public function getScopes();
 
 	/**
-	 * Get all permission keys for specific app
+	 * Get all attribute keys for specific scope
 	 *
-	 * @param string $app
+	 * @param string $scope
 	 * @return string[]
 	 * @since 10.2.0
 	 */
-	public function getKeys($app);
+	public function getKeys($scope);
 }

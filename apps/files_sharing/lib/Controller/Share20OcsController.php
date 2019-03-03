@@ -23,7 +23,7 @@
 namespace OCA\Files_Sharing\Controller;
 
 use OC\OCS\Result;
-use OC\Share20\ExtraPermissions;
+use OC\Share20\ShareAttributes;
 use OCP\AppFramework\OCSController;
 use OCP\Constants;
 use OCP\Files\IRootFolder;
@@ -41,7 +41,7 @@ use OCP\Lock\LockedException;
 use OCP\Share;
 use OCP\Share\Exceptions\GenericShareException;
 use OCP\Share\Exceptions\ShareNotFound;
-use OCP\Share\IExtraPermissions;
+use OCP\Share\IAttributes;
 use OCP\Share\IManager;
 use OCP\Share\IShare;
 use OCA\Files_Sharing\Service\NotificationPublisher;
@@ -224,21 +224,21 @@ class Share20OcsController extends OCSController {
 
 		$result['mail_send'] = $share->getMailSend() ? 1 : 0;
 
-		$extraPermissions = $share->getExtraPermissions();
-		if ($extraPermissions !== null) {
+		$attributes = $share->getAttributes();
+		if ($attributes !== null) {
 			// Share provider supports extra permissions
-			$formattedShareExtraPermissions = [];
-			foreach ($extraPermissions->getApps() as $app) {
-				foreach ($extraPermissions->getKeys($app) as $key) {
-					$formattedPermission['app'] = $app;
-					$formattedPermission['name'] = $key;
-					$formattedPermission['enabled'] = $extraPermissions->getPermission($app, $key);
-					$formattedShareExtraPermissions[] = $formattedPermission;
+			$formattedShareAttributes = [];
+			foreach ($attributes->getScopes() as $scope) {
+				foreach ($attributes->getKeys($scope) as $key) {
+					$formattedAttr['scope'] = $scope;
+					$formattedAttr['name'] = $key;
+					$formattedAttr['enabled'] = $attributes->getAttribute($scope, $key);
+					$formattedShareAttributes[] = $formattedAttr;
 				}
 			}
-			$result['extra_permissions'] = \json_encode($formattedShareExtraPermissions);
+			$result['attributes'] = \json_encode($formattedShareAttributes);
 		} else {
-			$result['extra_permissions'] = null;
+			$result['attributes'] = null;
 		}
 
 		return $result;
@@ -516,7 +516,7 @@ class Share20OcsController extends OCSController {
 		$share->setSharedBy($this->userSession->getUser()->getUID());
 
 		try {
-			$share = $this->setExtraPermissions($share, $this->request->getParam('extraPermissions', null));
+			$share = $this->setShareAttributes($share, $this->request->getParam('attributes', null));
 		} catch (\Exception $e) {
 			$share->getNode()->unlock(ILockingProvider::LOCK_SHARED);
 			return new Result(null, 400, $this->l->t('Cannot parse extra share permissions'));
@@ -878,7 +878,7 @@ class Share20OcsController extends OCSController {
 		}
 
 		try {
-			$share = $this->setExtraPermissions($share, $this->request->getParam('extraPermissions', null));
+			$share = $this->setShareAttributes($share, $this->request->getParam('attributes', null));
 		} catch (\Exception $e) {
 			$share->getNode()->unlock(ILockingProvider::LOCK_SHARED);
 			return new Result(null, 400, $this->l->t('Cannot parse extra share permissions'));
@@ -1216,22 +1216,22 @@ class Share20OcsController extends OCSController {
 
 	/**
 	 * @param IShare $share
-	 * @param string[][]|null $formattedShareExtraPermissions
+	 * @param string[][]|null $formattedShareAttributes
 	 * @return IShare modified share
 	 */
-	private function setExtraPermissions($share, $formattedShareExtraPermissions) {
-		if ($formattedShareExtraPermissions != null) {
-			$newShareExtraPermissions = $this->shareManager->newShare()->newExtraPermissions();
-			foreach ($formattedShareExtraPermissions as $formattedPermission) {
-				$newShareExtraPermissions->setPermission(
-					$formattedPermission["app"],
-					$formattedPermission["name"],
-					(bool) \json_decode($formattedPermission["enabled"])
+	private function setShareAttributes($share, $formattedShareAttributes) {
+		if ($formattedShareAttributes != null) {
+			$newShareAttributes = $this->shareManager->newShare()->newAttributes();
+			foreach ($formattedShareAttributes as $formattedAttr) {
+				$newShareAttributes->setAttribute(
+					$formattedAttr["scope"],
+					$formattedAttr["name"],
+					(bool) \json_decode($formattedAttr["enabled"])
 				);
 			}
-			$share->setExtraPermissions($newShareExtraPermissions);
+			$share->setAttributes($newShareAttributes);
 		} else {
-			$share->setExtraPermissions(null);
+			$share->setAttributes(null);
 		}
 
 		return $share;

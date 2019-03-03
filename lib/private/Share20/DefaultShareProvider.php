@@ -26,7 +26,7 @@
 namespace OC\Share20;
 
 use OCP\Files\File;
-use OCP\Share\IExtraPermissions;
+use OCP\Share\IAttributes;
 use OCP\Share\IShare;
 use OCP\Share\IShareProvider;
 use OC\Share20\Exception\InvalidShare;
@@ -154,11 +154,11 @@ class DefaultShareProvider implements IShareProvider {
 		// set the permissions
 		$qb->setValue('permissions', $qb->createNamedParameter($share->getPermissions()));
 
-		// set extra permissions
-		$extraSharePermissions = $this->formatExtraPermissions(
-			$share->getExtraPermissions()
+		// set share attributes
+		$shareAttributes = $this->formatAttributes(
+			$share->getAttributes()
 		);
-		$qb->setValue('extra_permissions', $qb->createNamedParameter($extraSharePermissions));
+		$qb->setValue('attributes', $qb->createNamedParameter($shareAttributes));
 
 		// Set who created this share
 		$qb->setValue('uid_initiator', $qb->createNamedParameter($share->getSharedBy()));
@@ -206,8 +206,8 @@ class DefaultShareProvider implements IShareProvider {
 	public function update(\OCP\Share\IShare $share) {
 		$this->validate($share);
 
-		$extraSharePermissions = $this->formatExtraPermissions(
-			$share->getExtraPermissions()
+		$shareAttributes = $this->formatAttributes(
+			$share->getAttributes()
 		);
 
 		if ($share->getShareType() === \OCP\Share::SHARE_TYPE_USER) {
@@ -221,7 +221,7 @@ class DefaultShareProvider implements IShareProvider {
 				->set('uid_owner', $qb->createNamedParameter($share->getShareOwner()))
 				->set('uid_initiator', $qb->createNamedParameter($share->getSharedBy()))
 				->set('permissions', $qb->createNamedParameter($share->getPermissions()))
-				->set('extra_permissions', $qb->createNamedParameter($extraSharePermissions))
+				->set('attributes', $qb->createNamedParameter($shareAttributes))
 				->set('item_source', $qb->createNamedParameter($share->getNode()->getId()))
 				->set('file_source', $qb->createNamedParameter($share->getNode()->getId()))
 				->set('accepted', $qb->createNamedParameter($share->getState()))
@@ -234,7 +234,7 @@ class DefaultShareProvider implements IShareProvider {
 				->set('uid_owner', $qb->createNamedParameter($share->getShareOwner()))
 				->set('uid_initiator', $qb->createNamedParameter($share->getSharedBy()))
 				->set('permissions', $qb->createNamedParameter($share->getPermissions()))
-				->set('extra_permissions', $qb->createNamedParameter($extraSharePermissions))
+				->set('attributes', $qb->createNamedParameter($shareAttributes))
 				->set('item_source', $qb->createNamedParameter($share->getNode()->getId()))
 				->set('file_source', $qb->createNamedParameter($share->getNode()->getId()))
 				->set('accepted', $qb->createNamedParameter($share->getState()))
@@ -260,7 +260,7 @@ class DefaultShareProvider implements IShareProvider {
 			$qb->update('share')
 				->where($qb->expr()->eq('parent', $qb->createNamedParameter($share->getId())))
 				->set('permissions', $qb->createNamedParameter($share->getPermissions()))
-				->set('extra_permissions', $qb->createNamedParameter($extraSharePermissions))
+				->set('attributes', $qb->createNamedParameter($shareAttributes))
 				->execute();
 		} elseif ($share->getShareType() === \OCP\Share::SHARE_TYPE_LINK) {
 			$qb = $this->dbConn->getQueryBuilder();
@@ -270,7 +270,7 @@ class DefaultShareProvider implements IShareProvider {
 				->set('uid_owner', $qb->createNamedParameter($share->getShareOwner()))
 				->set('uid_initiator', $qb->createNamedParameter($share->getSharedBy()))
 				->set('permissions', $qb->createNamedParameter($share->getPermissions()))
-				->set('extra_permissions', $qb->createNamedParameter($extraSharePermissions))
+				->set('attributes', $qb->createNamedParameter($shareAttributes))
 				->set('item_source', $qb->createNamedParameter($share->getNode()->getId()))
 				->set('file_source', $qb->createNamedParameter($share->getNode()->getId()))
 				->set('token', $qb->createNamedParameter($share->getToken()))
@@ -412,8 +412,8 @@ class DefaultShareProvider implements IShareProvider {
 			$data = $stmt->fetch();
 			$stmt->closeCursor();
 
-			$extraSharePermissions = $this->formatExtraPermissions(
-				$share->getExtraPermissions()
+			$shareAttributes = $this->formatAttributes(
+				$share->getAttributes()
 			);
 
 			if ($data === false) {
@@ -431,7 +431,7 @@ class DefaultShareProvider implements IShareProvider {
 						'file_source' => $qb->createNamedParameter($share->getNode()->getId()),
 						'file_target' => $qb->createNamedParameter($share->getTarget()),
 						'permissions' => $qb->createNamedParameter($share->getPermissions()),
-						'extra_permissions' => $qb->createNamedParameter($extraSharePermissions),
+						'attributes' => $qb->createNamedParameter($shareAttributes),
 						'stime' => $qb->createNamedParameter($share->getShareTime()->getTimestamp()),
 						'accepted' => $qb->createNamedParameter($share->getState()),
 					])->execute();
@@ -444,7 +444,7 @@ class DefaultShareProvider implements IShareProvider {
 					// make sure to reset the permissions to the one of the parent share,
 					// as legacy entries with zero permissions might still exist
 					->set('permissions', $qb->createNamedParameter($share->getPermissions()))
-					->set('extra_permissions', $qb->createNamedParameter($extraSharePermissions))
+					->set('attributes', $qb->createNamedParameter($shareAttributes))
 					->where($qb->expr()->eq('id', $qb->createNamedParameter($data['id'])))
 					->execute();
 			}
@@ -985,7 +985,7 @@ class DefaultShareProvider implements IShareProvider {
 			$share->setToken($data['token']);
 		}
 
-		$share = $this->setExtraPermissions($share, $data['extra_permissions']);
+		$share = $this->setAttributes($share, $data['attributes']);
 
 		$share->setSharedBy($data['uid_initiator']);
 		$share->setShareOwner($data['uid_owner']);
@@ -1264,47 +1264,45 @@ class DefaultShareProvider implements IShareProvider {
 	}
 
 	/**
-	 * Load from database format (JSON string) to IExtraPermissions
+	 * Load from database format (JSON string) to IAttributes
 	 *
 	 * @param IShare $share
 	 * @param string $data
 	 * @return IShare modified share
 	 */
-	private function setExtraPermissions($share, $data) {
+	private function setAttributes($share, $data) {
 		if ($data !== null) {
-			$extraPermissions = new ExtraPermissions();
-			// FIXME: add support for JSON in Doctrine
-			$extraPermissionsJson = \json_decode($data, true);
-			foreach ($extraPermissionsJson as $app => $keys) {
+			$attributes = new ShareAttributes();
+			$attributesJson = \json_decode($data, true);
+			foreach ($attributesJson as $scope => $keys) {
 				foreach ($keys as $key => $enabled) {
-					$extraPermissions->setPermission($app, $key, $enabled);
+					$attributes->setAttribute($scope, $key, $enabled);
 				}
 			}
-			$share->setExtraPermissions($extraPermissions);
+			$share->setAttributes($attributes);
 		}
 
 		return $share;
 	}
 
 	/**
-	 * Format IExtraPermissions to database format (JSON string)
+	 * Format IAttributes to database format (JSON string)
 	 *
-	 * @param IExtraPermissions $permissions
+	 * @param IAttributes|null $attributes
 	 * @return string|null
 	 */
-	private function formatExtraPermissions($permissions) {
-		if ($permissions === null || empty($permissions->getApps())) {
+	private function formatAttributes($attributes) {
+		if ($attributes === null || empty($attributes->getScopes())) {
 			return null;
 		}
-		$formattedPermissions = [];
-		foreach ($permissions->getApps() as $app) {
-			$formattedPermissions[$app] = [];
-			foreach ($permissions->getKeys($app) as $key) {
-				$formattedPermissions[$app][$key] = $permissions->getPermission($app, $key);
+		$formattedAttributes = [];
+		foreach ($attributes->getScopes() as $scope) {
+			$formattedAttributes[$scope] = [];
+			foreach ($attributes->getKeys($scope) as $key) {
+				$formattedAttributes[$scope][$key] = $attributes->getAttribute($scope, $key);
 			}
 		}
 
-		// FIXME: add support for JSON in Doctrine
-		return \json_encode($formattedPermissions);
+		return \json_encode($formattedAttributes);
 	}
 }

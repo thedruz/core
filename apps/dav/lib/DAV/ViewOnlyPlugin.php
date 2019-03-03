@@ -78,7 +78,7 @@ class ViewOnlyPlugin extends ServerPlugin {
 			}
 
 			$fileInfo = $davNode->getFileInfo();
-			if (!$this->checkFileInfo($fileInfo)) {
+			if ($fileInfo && !$this->checkFileInfo($fileInfo)) {
 				throw new Forbidden('File or folder is in secure-view mode and cannot be directly downloaded.');
 			}
 		} catch (NotFound $e) {
@@ -106,7 +106,7 @@ class ViewOnlyPlugin extends ServerPlugin {
 		$share = $storage->getShare();
 
 		// Check if read-only and on whether permission can download is both set and disabled.
-		$canDownload = $share->getExtraPermissions()->getPermission('core', 'can-download');
+		$canDownload = $share->getAttributes()->getAttribute('core', 'can-download');
 		if (!$fileInfo->isUpdateable() && $canDownload !== null && !$canDownload) {
 			return false;
 		}

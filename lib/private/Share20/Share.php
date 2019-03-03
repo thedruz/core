@@ -28,7 +28,7 @@ use OCP\Files\NotFoundException;
 use OCP\IUserManager;
 use OCP\Share\Exceptions\IllegalIDChangeException;
 use OC\Share\Constants;
-use OCP\Share\IExtraPermissions;
+use OCP\Share\IAttributes;
 use OCP\Share\IShare;
 
 class Share implements IShare {
@@ -53,8 +53,8 @@ class Share implements IShare {
 	private $shareOwner;
 	/** @var int */
 	private $permissions;
-	/** @var IExtraPermissions */
-	private $extraPermissions;
+	/** @var IAttributes */
+	private $attributes;
 	/** @var \DateTime */
 	private $expireDate;
 	/** @var string */
@@ -276,22 +276,22 @@ class Share implements IShare {
 	/**
 	 * @inheritdoc
 	 */
-	public function newExtraPermissions() {
-		return new ExtraPermissions();
+	public function newAttributes() {
+		return new ShareAttributes();
 	}
 
 	/**
 	 * @inheritdoc
 	 */
-	public function setExtraPermissions($permissions) {
-		$this->extraPermissions = $permissions;
+	public function setAttributes($attributes) {
+		$this->attributes = $attributes;
 		return $this;
 	}
 	/**
 	 * @inheritdoc
 	 */
-	public function getExtraPermissions() {
-		return $this->extraPermissions;
+	public function getAttributes() {
+		return $this->attributes;
 	}
 
 	/**

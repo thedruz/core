@@ -84,7 +84,7 @@ class ViewOnly {
 		$share = $storage->getShare();
 
 		// Check if read-only and on whether permission can download is both set and disabled.
-		$canDownload = $share->getExtraPermissions()->getPermission('core', 'can-download');
+		$canDownload = $share->getAttributes()->getAttribute('core', 'can-download');
 		if (!$fileInfo->isUpdateable() && $canDownload !== null && !$canDownload) {
 			return false;
 		}

@@ -15,9 +15,9 @@ class Version20181220085457 implements ISchemaMigration {
 		if ($schema->hasTable("${prefix}share")) {
 			$shareTable = $schema->getTable("${prefix}share");
 
-			if (!$shareTable->hasColumn('extra_permissions')) {
+			if (!$shareTable->hasColumn('attributes')) {
 				$shareTable->addColumn(
-					'extra_permissions',
+					'attributes',
 					Type::JSON,
 					[
 						'default' => null,

@@ -20,34 +20,34 @@
  */
 namespace OC\Share20;
 
-use OCP\Share\IExtraPermissions;
+use OCP\Share\IAttributes;
 
-class ExtraPermissions implements IExtraPermissions {
+class ShareAttributes implements IAttributes {
 
 	/** @var array */
-	private $permissions;
+	private $attributes;
 
 	public function __construct() {
-		$this->permissions = [];
+		$this->attributes = [];
 	}
 
 	/**
 	 * @inheritdoc
 	 */
-	public function setPermission($app, $key, $enabled) {
-		if (!\array_key_exists($app, $this->permissions)) {
-			$this->permissions[$app] = [];
+	public function setAttribute($scope, $key, $enabled) {
+		if (!\array_key_exists($scope, $this->attributes)) {
+			$this->attributes[$scope] = [];
 		}
-		$this->permissions[$app][$key] = $enabled;
+		$this->attributes[$scope][$key] = $enabled;
 	}
 
 	/**
 	 * @inheritdoc
 	 */
-	public function getPermission($app, $key) {
-		if (\array_key_exists($app, $this->permissions) &&
-			\array_key_exists($key, $this->permissions[$app])) {
-			return $this->permissions[$app][$key];
+	public function getAttribute($scope, $key) {
+		if (\array_key_exists($scope, $this->attributes) &&
+			\array_key_exists($key, $this->attributes[$scope])) {
+			return $this->attributes[$scope][$key];
 		}
 		return null;
 	}
@@ -55,17 +55,17 @@ class ExtraPermissions implements IExtraPermissions {
 	/**
 	 * @inheritdoc
 	 */
-	public function getApps() {
-		return \array_keys($this->permissions);
+	public function getScopes() {
+		return \array_keys($this->attributes);
 	}
 
 	/**
 	 * @inheritdoc
 	 */
-	public function getKeys($app) {
-		if (!\array_key_exists($app, $this->permissions)) {
+	public function getKeys($scope) {
+		if (!\array_key_exists($scope, $this->attributes)) {
 			return [];
 		}
-		return \array_keys($this->permissions[$app]);
+		return \array_keys($this->attributes[$scope]);
 	}
 }

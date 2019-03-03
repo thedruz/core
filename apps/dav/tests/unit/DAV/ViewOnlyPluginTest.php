@@ -20,14 +20,14 @@
  */
 namespace OCA\DAV\Tests\unit\DAV;
 
-use OCA\DAV\DAV\ViewOnly\Plugin as ViewOnlyPlugin;
+use OCA\DAV\DAV\ViewOnlyPlugin;
 use OCA\Files_Sharing\SharedStorage;
 use OCA\DAV\Connector\Sabre\File as DavFile;
-use OCP\Files\File;
-use OCP\Files\Folder;
+use OCP\Files\FileInfo;
 use OCP\Files\Storage\IStorage;
-use OCP\Share\IExtraPermissions;
+use OCP\Share\IAttributes;
 use OCP\Share\IShare;
+use Sabre\DAV\Server;
 use Sabre\DAV\Tree;
 use Test\TestCase;
 use Sabre\HTTP\RequestInterface;
@@ -47,7 +47,7 @@ class ViewOnlyPluginTest extends TestCase {
 		$this->request = $this->getMockBuilder('Sabre\HTTP\RequestInterface')->getMock();
 		$this->tree = $this->createMock(Tree::class);
 
-		$server = $this->getMockBuilder('Sabre\DAV\Server')->getMock();
+		$server = $this->createMock(Server::class);
 		$server->tree = $this->tree;
 
 		$this->plugin->initialize($server);
@@ -55,17 +55,17 @@ class ViewOnlyPluginTest extends TestCase {
 
 	public function testCanGetNonDav() {
 		$this->request->expects($this->exactly(1))->method('getPath')->willReturn('files/test/target');
-		$this->tree->method('getNodeForPath')->willReturn('this is not Dav File');
+		$this->tree->method('getNodeForPath')->willReturn(null);
 
 		$this->assertTrue($this->plugin->checkViewOnly($this->request));
 	}
 
-	public function testCanGetNonFileFolder() {
+	public function testCanGetNonFileInfo() {
 		$this->request->expects($this->exactly(1))->method('getPath')->willReturn('files/test/target');
 		$davNode = $this->createMock(DavFile::class);
 		$this->tree->method('getNodeForPath')->willReturn($davNode);
 
-		$davNode->method('getNode')->willReturn('this is not File or Folder');
+		$davNode->method('getFileInfo')->willReturn(null);
 
 		$this->assertTrue($this->plugin->checkViewOnly($this->request));
 	}
@@ -75,11 +75,11 @@ class ViewOnlyPluginTest extends TestCase {
 		$davNode = $this->createMock(DavFile::class);
 		$this->tree->method('getNodeForPath')->willReturn($davNode);
 
-		$node = $this->createMock(File::class);
-		$davNode->method('getNode')->willReturn($node);
+		$fileInfo = $this->createMock(FileInfo::class);
+		$davNode->method('getFileInfo')->willReturn($fileInfo);
 
 		$storage = $this->createMock(IStorage::class);
-		$node->method('getStorage')->willReturn($storage);
+		$fileInfo->method('getStorage')->willReturn($storage);
 		$storage->method('instanceOfStorage')->with(SharedStorage::class)->willReturn(false);
 
 		$this->assertTrue($this->plugin->checkViewOnly($this->request));
@@ -88,42 +88,38 @@ class ViewOnlyPluginTest extends TestCase {
 	public function nodeReturns() {
 		return [
 			// can download and is updatable - can get file
-			[ $this->createMock(File::class), true, true, true],
-			[ $this->createMock(Folder::class), true, true, true],
+			[ $this->createMock(FileInfo::class), true, true, true],
 			// extra permission can download is for some reason disabled,
 			// but file is updatable - so can get file
-			[ $this->createMock(File::class), false, true, true],
-			[ $this->createMock(Folder::class), false, true, true],
+			[ $this->createMock(FileInfo::class), false, true, true],
 			// has extra permission can download, and read-only is set - can get file
-			[ $this->createMock(File::class), true, false, true],
-			[ $this->createMock(Folder::class), true, false, true],
+			[ $this->createMock(FileInfo::class), true, false, true],
 			// has no extra permission can download, and read-only is set - cannot get the file
-			[ $this->createMock(File::class), false, false, false],
-			[ $this->createMock(Folder::class), false, false, false],
+			[ $this->createMock(FileInfo::class), false, false, false],
 		];
 	}
 
 	/**
 	 * @dataProvider nodeReturns
 	 */
-	public function testCanGet($node, $canDownloadPerm, $isUpdatable, $expected) {
+	public function testCanGet($fileInfo, $canDownloadPerm, $isUpdatable, $expected) {
 		$this->request->expects($this->exactly(1))->method('getPath')->willReturn('files/test/target');
 
 		$davNode = $this->createMock(DavFile::class);
 		$this->tree->method('getNodeForPath')->willReturn($davNode);
 
-		$davNode->method('getNode')->willReturn($node);
+		$davNode->method('getFileInfo')->willReturn($fileInfo);
 
 		$storage = $this->createMock(SharedStorage::class);
 		$share = $this->createMock(IShare::class);
-		$node->method('getStorage')->willReturn($storage);
+		$fileInfo->method('getStorage')->willReturn($storage);
 		$storage->method('instanceOfStorage')->with(SharedStorage::class)->willReturn(true);
 		$storage->method('getShare')->willReturn($share);
 
-		$extPerms = $this->createMock(IExtraPermissions::class);
-		$share->method('getExtraPermissions')->willReturn($extPerms);
-		$extPerms->method('getPermission')->with('dav', 'can-download')->willReturn($canDownloadPerm);
-		$node->method('isUpdateable')->willReturn($isUpdatable);
+		$extPerms = $this->createMock(IAttributes::class);
+		$share->method('getAttributes')->willReturn($extPerms);
+		$extPerms->method('getAttribute')->with('core', 'can-download')->willReturn($canDownloadPerm);
+		$fileInfo->method('isUpdateable')->willReturn($isUpdatable);
 
 		try {
 			// with these permissions / with this type of node user can download
