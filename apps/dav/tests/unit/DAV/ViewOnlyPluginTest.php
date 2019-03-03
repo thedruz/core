@@ -2,7 +2,7 @@
 /**
  * @author Piotr Mrowczynski piotr@owncloud.com
  *
- * @copyright Copyright (c) 2018, ownCloud GmbH
+ * @copyright Copyright (c) 2019, ownCloud GmbH
  * @license AGPL-3.0
  *
  * This code is free software: you can redistribute it and/or modify
@@ -25,6 +25,7 @@ use OCA\Files_Sharing\SharedStorage;
 use OCA\DAV\Connector\Sabre\File as DavFile;
 use OCP\Files\FileInfo;
 use OCP\Files\Storage\IStorage;
+use OCP\ILogger;
 use OCP\Share\IAttributes;
 use OCP\Share\IShare;
 use Sabre\DAV\Server;
@@ -43,8 +44,10 @@ class ViewOnlyPluginTest extends TestCase {
 	private $request;
 
 	public function setUp() {
-		$this->plugin = new ViewOnlyPlugin();
-		$this->request = $this->getMockBuilder('Sabre\HTTP\RequestInterface')->getMock();
+		$this->plugin = new ViewOnlyPlugin(
+			$this->createMock(ILogger::class)
+		);
+		$this->request = $this->createMock(RequestInterface::class);
 		$this->tree = $this->createMock(Tree::class);
 
 		$server = $this->createMock(Server::class);
@@ -65,7 +68,7 @@ class ViewOnlyPluginTest extends TestCase {
 		$davNode = $this->createMock(DavFile::class);
 		$this->tree->method('getNodeForPath')->willReturn($davNode);
 
-		$davNode->method('getFileInfo')->willReturn(null);
+		$davNode->method('getNode')->willReturn(null);
 
 		$this->assertTrue($this->plugin->checkViewOnly($this->request));
 	}
@@ -76,7 +79,7 @@ class ViewOnlyPluginTest extends TestCase {
 		$this->tree->method('getNodeForPath')->willReturn($davNode);
 
 		$fileInfo = $this->createMock(FileInfo::class);
-		$davNode->method('getFileInfo')->willReturn($fileInfo);
+		$davNode->method('getNode')->willReturn($fileInfo);
 
 		$storage = $this->createMock(IStorage::class);
 		$fileInfo->method('getStorage')->willReturn($storage);
@@ -85,41 +88,37 @@ class ViewOnlyPluginTest extends TestCase {
 		$this->assertTrue($this->plugin->checkViewOnly($this->request));
 	}
 
-	public function nodeReturns() {
+	public function providesDataForCanGet() {
 		return [
-			// can download and is updatable - can get file
-			[ $this->createMock(FileInfo::class), true, true, true],
-			// extra permission can download is for some reason disabled,
-			// but file is updatable - so can get file
-			[ $this->createMock(FileInfo::class), false, true, true],
-			// has extra permission can download, and read-only is set - can get file
-			[ $this->createMock(FileInfo::class), true, false, true],
-			// has no extra permission can download, and read-only is set - cannot get the file
-			[ $this->createMock(FileInfo::class), false, false, false],
+			// has attribute can download - can get file
+			[ $this->createMock(FileInfo::class), true, true],
+			// has no attribute can download - can get file
+			[ $this->createMock(FileInfo::class), null, true],
+			// has attribute with can download being disabled - cannot get the file
+			[ $this->createMock(FileInfo::class), false, false],
 		];
 	}
 
 	/**
-	 * @dataProvider nodeReturns
+	 * @dataProvider providesDataForCanGet
 	 */
-	public function testCanGet($fileInfo, $canDownloadPerm, $isUpdatable, $expected) {
+	public function testCanGet($nodeInfo, $canDownloadPerm, $expected) {
 		$this->request->expects($this->exactly(1))->method('getPath')->willReturn('files/test/target');
 
 		$davNode = $this->createMock(DavFile::class);
 		$this->tree->method('getNodeForPath')->willReturn($davNode);
 
-		$davNode->method('getFileInfo')->willReturn($fileInfo);
+		$davNode->method('getNode')->willReturn($nodeInfo);
 
 		$storage = $this->createMock(SharedStorage::class);
 		$share = $this->createMock(IShare::class);
-		$fileInfo->method('getStorage')->willReturn($storage);
+		$nodeInfo->method('getStorage')->willReturn($storage);
 		$storage->method('instanceOfStorage')->with(SharedStorage::class)->willReturn(true);
 		$storage->method('getShare')->willReturn($share);
 
-		$extPerms = $this->createMock(IAttributes::class);
-		$share->method('getAttributes')->willReturn($extPerms);
-		$extPerms->method('getAttribute')->with('core', 'can-download')->willReturn($canDownloadPerm);
-		$fileInfo->method('isUpdateable')->willReturn($isUpdatable);
+		$extAttr = $this->createMock(IAttributes::class);
+		$share->method('getAttributes')->willReturn($extAttr);
+		$extAttr->method('getAttribute')->with('core', 'can-download')->willReturn($canDownloadPerm);
 
 		try {
 			// with these permissions / with this type of node user can download

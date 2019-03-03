@@ -131,6 +131,43 @@ class Hooks {
 				$this->notificationPublisher->discardNotification($shareObject);
 			}
 		);
+
+		$this->eventDispatcher->addListener(
+			'file.beforeCreateZip',
+			function (GenericEvent $event) {
+				$dir = $event->getArgument('dir');
+				$files = $event->getArgument('files');
+
+				$pathsToCheck = [];
+				if (\is_array($files)) {
+					foreach ($files as $file) {
+						$pathsToCheck[] = $dir . '/' . $file;
+					}
+				} elseif (\is_string($files)) {
+					$pathsToCheck[] = $dir . '/' . $files;
+				}
+
+				$viewOnlyHandler = new ViewOnly();
+				if (!$viewOnlyHandler->check($pathsToCheck)) {
+					$event->setArgument('errorMessage', 'File, folder or one of the files inside the folder cannot be downloaded');
+					$event->setArgument('run', false);
+				} else {
+					$event->setArgument('run', true);
+				}
+			}
+		);
+
+		$this->eventDispatcher->addListener(
+			'file.beforeGetDirect',
+			function (GenericEvent $event) {
+				$pathsToCheck[] = $event->getArgument('path');
+
+				$viewOnlyHandler = new ViewOnly();
+				if (!$viewOnlyHandler->check($pathsToCheck)) {
+					$event->setArgument('errorMessage', 'File, folder or one of the files inside the folder cannot be downloaded');
+				}
+			}
+		);
 	}
 
 	private function filterSharesByFileId($shares, $fileId) {

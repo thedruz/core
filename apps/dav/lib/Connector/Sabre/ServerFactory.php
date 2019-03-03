@@ -164,7 +164,9 @@ class ServerFactory {
 			$server->addPlugin(new \OCA\DAV\Connector\Sabre\QuotaPlugin($view));
 
 			// Allow view-only plugin for webdav requests
-			$server->addPlugin(new ViewOnlyPlugin());
+			$server->addPlugin(new ViewOnlyPlugin(
+				\OC::$server->getLogger()
+			));
 
 			if ($this->userSession->isLoggedIn()) {
 				$server->addPlugin(new \OCA\DAV\Connector\Sabre\TagsPlugin($objectTree, $this->tagManager));

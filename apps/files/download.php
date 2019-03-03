@@ -39,11 +39,10 @@ if (!\OC\Files\Filesystem::file_exists($filename)) {
 	exit;
 }
 
-
 //Dispatch an event to see if any apps have problem with download
-$event = new \Symfony\Component\EventDispatcher\GenericEvent(null, ['path' => $filename, 'run' => true]);
+$event = new \Symfony\Component\EventDispatcher\GenericEvent(null, ['path' => $filename]);
 OC::$server->getEventDispatcher()->dispatch('file.beforeGetDirect', $event);
-if (($event->getArgument('run') === false) or ($event->hasArgument('errorMessage'))) {
+if ($event->hasArgument('errorMessage')) {
 	\header("HTTP/1.0 500 Forbidden");
 	$tmpl = new OCP\Template('', '500', 'guest');
 	$tmpl->assign('file', $filename);

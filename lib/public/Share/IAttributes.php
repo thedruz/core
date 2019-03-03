@@ -2,7 +2,7 @@
 /**
  * @author Piotr Mrowczynski <piotr@owncloud.com>
  *
- * @copyright Copyright (c) 2018, ownCloud GmbH
+ * @copyright Copyright (c) 2019, ownCloud GmbH
  * @license AGPL-3.0
  *
  * This code is free software: you can redistribute it and/or modify
@@ -29,17 +29,18 @@ namespace OCP\Share;
 interface IAttributes {
 
 	/**
-	 * Sets an attribute. If the key did not exist before it will be created.
+	 * Sets an attribute enabled/disabled. If the key did not exist before it will be created.
 	 *
 	 * @param string $scope scope
 	 * @param string $key key
 	 * @param bool $enabled enabled
+	 * @return IAttributes The modified object
 	 * @since 10.2.0
 	 */
 	public function setAttribute($scope, $key, $enabled);
 
 	/**
-	 * Checks if attribute for given scope id and key is enabled.
+	 * Returns if attribute is enabled/disabled for given scope id and key.
 	 * If attribute does not exist, returns null
 	 *
 	 * @param string $scope scope

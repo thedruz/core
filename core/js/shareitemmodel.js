@@ -58,7 +58,7 @@
 	 */
 
 	/**
-	 * @typedef {object} OC.Share.Types.AvailableShareAttribute
+	 * @typedef {object} OC.Share.Types.RegisteredShareAttribute
 	 * @property {string} name
 	 * @property {bool}   default
 	 * @property {string} scope
@@ -102,9 +102,9 @@
 		_linkSharesCollection: null,
 
 		/**
-		 * @type {OC.Share.Types.AvailableShareAttribute[]} available extra permissions for this file/folder share
+		 * @type {OC.Share.Types.RegisteredShareAttribute[]} registered available share permissions for this file/folder share
 		 */
-		_availableAttributes: null,
+		_registeredAttributes: null,
 
 		initialize: function(attributes, options) {
 			if(!_.isUndefined(options.configModel)) {
@@ -116,7 +116,7 @@
 			}
 
 			this._linkSharesCollection = new OC.Share.SharesCollection();
-			this._availableAttributes = [];
+			this._registeredAttributes = [];
 
 			_.bindAll(this, 'addShare');
 			OC.Plugins.attach('OC.Share.ShareItemModel', this);
@@ -170,7 +170,7 @@
 
 			// set default allowed extra permissions for this share
 			var shareAttributes = [];
-			var allowedAttributes = this._getAllowedAttributes(properties.permissions);
+			var allowedAttributes = this.getRegisteredAttributes(properties.permissions);
 			_.map(allowedAttributes, function(attribute) {
 				shareAttributes.push({
 					scope : attribute.scope,
@@ -216,7 +216,7 @@
 			options = options || {};
 
 			var shareAttributes = [];
-			var compatibleAttributes = this._getAllowedAttributes(properties.permissions);
+			var compatibleAttributes = this.getRegisteredAttributes(properties.permissions);
 			compatibleAttributes.map(function(allowedAttribute) {
 				// Check existing extra permissions which are compatible
 				var found = false;
@@ -835,15 +835,15 @@
 		 * share attributes which are compatible
 		 *
 		 * @param {number} permissions
-		 * @returns {OC.Share.Types.AvailableShareAttribute[]}
+		 * @returns {OC.Share.Types.RegisteredShareAttribute[]}
 		 * @private
 		 */
-		_getAllowedAttributes: function(permissions) {
+		getRegisteredAttributes: function(permissions) {
 			var result = [];
 
-			for(var i in this._availableAttributes) {
+			for(var i in this._registeredAttributes) {
 				var compatible = true;
-				var availAttr = this._availableAttributes[i];
+				var availAttr = this._registeredAttributes[i];
 				for(var j in availAttr.incompatiblePermissions) {
 					if (this._hasPermission(permissions, availAttr.incompatiblePermissions[j])) {
 						compatible = false;
@@ -891,18 +891,18 @@
 		 * @param name
 		 * @returns string|null
 		 */
-		getShareAttributeLabel: function(scope, name) {
-			for(var i in this._availableAttributes) {
-				if (this._availableAttributes[i].scope === scope
-					&& this._availableAttributes[i].name === name) {
-					return this._availableAttributes[i].label;
+		getRegisteredShareAttributeLabel: function(scope, name) {
+			for(var i in this._registeredAttributes) {
+				if (this._registeredAttributes[i].scope === scope
+					&& this._registeredAttributes[i].name === name) {
+					return this._registeredAttributes[i].label;
 				}
 			}
 			return null;
 		},
 
 		/**
-		 * Apps can register their extra share permissions
+		 * Apps can register default share attributes
 		 *
 		 * @param {string}   $scopeId
 		 * @param {string}   $attributeName
@@ -911,7 +911,7 @@
 		 * @param {number[]} $incompatiblePermissions
 		 */
 		registerShareAttribute: function($scopeId, $attributeName, $attributeLabel, $attributeDefault, $incompatiblePermissions) {
-			/** @type OC.Share.Types.AvailableShareAttribute */
+			/** @type OC.Share.Types.RegisteredShareAttribute */
 			var shareAttributes = {
 				scope: $scopeId,
 				name: $attributeName,
@@ -922,15 +922,15 @@
 
 			// Add extra permission or update if already existing
 			var exists = false;
-			for(var i in this._availableAttributes) {
-				if (this._availableAttributes[i].scope === $scopeId
-					&& this._availableAttributes[i].name === $attributeName) {
-					this._availableAttributes[i] = shareAttributes;
+			for(var i in this._registeredAttributes) {
+				if (this._registeredAttributes[i].scope === $scopeId
+					&& this._registeredAttributes[i].name === $attributeName) {
+					this._registeredAttributes[i] = shareAttributes;
 					exists = true;
 				}
 			}
 			if (!exists) {
-				this._availableAttributes.push(shareAttributes);
+				this._registeredAttributes.push(shareAttributes);
 			}
 
 		}

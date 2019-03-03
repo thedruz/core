@@ -283,7 +283,7 @@ class Share implements IShare {
 	/**
 	 * @inheritdoc
 	 */
-	public function setAttributes($attributes) {
+	public function setAttributes(IAttributes $attributes) {
 		$this->attributes = $attributes;
 		return $this;
 	}

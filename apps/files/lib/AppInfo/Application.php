@@ -27,10 +27,8 @@ namespace OCA\Files\AppInfo;
 use OCA\Files\Controller\ApiController;
 use OCA\Files\Controller\ViewController;
 use OCA\Files\Service\TagService;
-use OCA\Files\ViewOnly;
 use OCP\AppFramework\App;
 use OCP\IContainer;
-use Symfony\Component\EventDispatcher\GenericEvent;
 
 class Application extends App {
 	public function __construct(array $urlParams= []) {
@@ -96,37 +94,5 @@ class Application extends App {
 		 * Register capabilities
 		 */
 		$container->registerCapability('OCA\Files\Capabilities');
-
-		$dispatcher = $this->getContainer()->getServer()->getEventDispatcher();
-
-		// Make sure all legacy internal api calls are checked
-		$viewOnlyHandler = new ViewOnly();
-		$dispatcher->addListener('file.beforeCreateZip', function (GenericEvent $event) use ($viewOnlyHandler) {
-			$dir = $event->getArgument('dir');
-			$files = $event->getArgument('files');
-
-			$pathsToCheck = [];
-			if (\is_array($files)) {
-				foreach ($files as $file) {
-					$pathsToCheck[] = $dir . '/' . $file;
-				}
-			} elseif (\is_string($files)) {
-				$pathsToCheck[] = $dir . '/' . $files;
-			}
-
-			$event->setArgument(
-				'run',
-				$viewOnlyHandler->check($pathsToCheck)
-			);
-		});
-
-		$dispatcher->addListener('file.beforeGetDirect', function (GenericEvent $event) use ($viewOnlyHandler) {
-			$pathsToCheck[] = $event->getArgument('path');
-
-			$event->setArgument(
-				'run',
-				$viewOnlyHandler->check($pathsToCheck)
-			);
-		});
 	}
 }

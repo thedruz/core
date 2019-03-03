@@ -23,7 +23,7 @@ namespace Test\Share20;
 
 use OC\Authentication\Token\DefaultTokenMapper;
 use OC\Share20\DefaultShareProvider;
-use OCP\Share\IExtraPermissions;
+use OCP\Share\IAttributes as IShareAttributes;
 use OCP\DB\QueryBuilder\IQueryBuilder;
 use OCP\Files\File;
 use OCP\Files\Folder;
@@ -659,25 +659,25 @@ class DefaultShareProviderTest extends TestCase {
 	}
 
 	/**
-	 * @return \PHPUnit_Framework_MockObject_MockObject | IExtraPermissions
+	 * @return \PHPUnit_Framework_MockObject_MockObject | IShareAttributes
 	 */
-	private function createExtraPermissions() {
-		$extraPermissions = $this->createMock(IExtraPermissions::class);
-		$extraPermissions->method('getApps')
+	private function createShareAttributes() {
+		$attrs = $this->createMock(IShareAttributes::class);
+		$attrs->method('getScopes')
 			->with()
 			->willReturn(['app1']);
-		$extraPermissions->method('getKeys')
+		$attrs->method('getKeys')
 			->with('app1')
 			->willReturn(['perm1', 'perm2']);
-		$extraPermissions->method('getPermission')
+		$attrs->method('getAttribute')
 			->willReturn(true);
 
-		return $extraPermissions;
+		return $attrs;
 	}
 
-	private function assertExtraPermissions(IShare $share) {
-		$this->assertSame(['app1'], $share->getExtraPermissions()->getApps());
-		$this->assertSame(['perm1', 'perm2'], $share->getExtraPermissions()->getKeys('app1'));
+	private function assertShareAttributes(IShare $share) {
+		$this->assertSame(['app1'], $share->getAttributes()->getScopes());
+		$this->assertSame(['perm1', 'perm2'], $share->getAttributes()->getKeys('app1'));
 	}
 
 	public function testCreateUserShare() {
@@ -712,8 +712,8 @@ class DefaultShareProviderTest extends TestCase {
 		$share->setShareOwner('shareOwner');
 		$share->setNode($path);
 		$share->setPermissions(1);
-		$share->setExtraPermissions(
-			$this->createExtraPermissions()
+		$share->setAttributes(
+			$this->createShareAttributes()
 		);
 		$share->setTarget('/target');
 
@@ -726,7 +726,7 @@ class DefaultShareProviderTest extends TestCase {
 		$this->assertSame('sharedBy', $share2->getSharedBy());
 		$this->assertSame('shareOwner', $share2->getShareOwner());
 		$this->assertSame(1, $share2->getPermissions());
-		$this->assertExtraPermissions($share2);
+		$this->assertShareAttributes($share2);
 		$this->assertSame('/target', $share2->getTarget());
 		$this->assertLessThanOrEqual(new \DateTime(), $share2->getShareTime());
 		$this->assertSame($path, $share2->getNode());
@@ -764,8 +764,8 @@ class DefaultShareProviderTest extends TestCase {
 		$share->setShareOwner('shareOwner');
 		$share->setNode($path);
 		$share->setPermissions(1);
-		$share->setExtraPermissions(
-			$this->createExtraPermissions()
+		$share->setAttributes(
+			$this->createShareAttributes()
 		);
 		$share->setTarget('/target');
 
@@ -778,7 +778,7 @@ class DefaultShareProviderTest extends TestCase {
 		$this->assertSame('sharedBy', $share2->getSharedBy());
 		$this->assertSame('shareOwner', $share2->getShareOwner());
 		$this->assertSame(1, $share2->getPermissions());
-		$this->assertExtraPermissions($share2);
+		$this->assertShareAttributes($share2);
 		$this->assertSame('/target', $share2->getTarget());
 		$this->assertLessThanOrEqual(new \DateTime(), $share2->getShareTime());
 		$this->assertSame($path, $share2->getNode());

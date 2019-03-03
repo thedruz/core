@@ -2,7 +2,7 @@
 /**
  * @author Piotr Mrowczynski piotr@owncloud.com
  *
- * @copyright Copyright (c) 2018, ownCloud GmbH
+ * @copyright Copyright (c) 2019, ownCloud GmbH
  * @license AGPL-3.0
  *
  * This code is free software: you can redistribute it and/or modify
@@ -21,12 +21,12 @@
 
 namespace OCA\DAV\DAV;
 
-use OC\Files\Node\Folder;
 use OCA\DAV\Connector\Sabre\Exception\Forbidden;
 use OCA\DAV\Connector\Sabre\File as DavFile;
 use OCA\DAV\Meta\MetaFile;
 use OCA\Files_Sharing\SharedStorage;
 use OCP\Files\FileInfo;
+use OCP\ILogger;
 use Sabre\DAV\Exception\ServiceUnavailable;
 use Sabre\DAV\Server;
 use Sabre\DAV\ServerPlugin;
@@ -40,6 +40,16 @@ class ViewOnlyPlugin extends ServerPlugin {
 
 	/** @var \Sabre\DAV\Server $server */
 	private $server;
+
+	/** @var \Sabre\DAV\Server $server */
+	private $logger;
+
+	/**
+	 * @param ILogger $logger
+	 */
+	public function __construct(ILogger $logger) {
+		$this->logger = $logger;
+	}
 
 	/**
 	 * This initializes the plugin.
@@ -66,7 +76,6 @@ class ViewOnlyPlugin extends ServerPlugin {
 	 * @param RequestInterface $request request object
 	 * @return boolean
 	 * @throws Forbidden
-	 * @throws ServiceUnavailable
 	 */
 	public function checkViewOnly(
 		RequestInterface $request
@@ -94,10 +103,11 @@ class ViewOnlyPlugin extends ServerPlugin {
 
 			// Check if read-only and on whether permission can download is both set and disabled.
 			$canDownload = $share->getAttributes()->getAttribute('core', 'can-download');
-			if (!$node->isUpdateable() && $canDownload !== null && !$canDownload) {
+			if ($canDownload !== null && !$canDownload) {
 				throw new Forbidden('File or folder is in secure-view mode and cannot be directly downloaded.');
 			}
 		} catch (NotFound $e) {
+			$this->logger->warning($e->getMessage());
 		}
 
 		return true;

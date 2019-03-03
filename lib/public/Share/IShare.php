@@ -199,13 +199,13 @@ interface IShare {
 	 * @since 10.2.0
 	 * @return IShare The modified object
 	 */
-	public function setAttributes($attributes);
+	public function setAttributes(IAttributes $attributes);
 
 	/**
 	 * Get share attributes
 	 *
-	 * @return IAttributes
 	 * @since 10.2.0
+	 * @return IAttributes
 	 */
 	public function getAttributes();
 

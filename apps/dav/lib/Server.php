@@ -26,6 +26,7 @@
  */
 namespace OCA\DAV;
 
+use OC\Files\Filesystem;
 use OCA\DAV\AppInfo\PluginManager;
 use OCA\DAV\CalDAV\Schedule\IMipPlugin;
 use OCA\DAV\CardDAV\ImageExportPlugin;
@@ -190,7 +191,9 @@ class Server {
 		$this->server->addPlugin(new ChunkingPlugin());
 
 		// Allow view-only plugin for webdav requests
-		$this->server->addPlugin(new ViewOnlyPlugin());
+		$this->server->addPlugin(new ViewOnlyPlugin(
+			\OC::$server->getLogger()
+		));
 
 		if (BrowserErrorPagePlugin::isBrowserRequest($request)) {
 			$this->server->addPlugin(new BrowserErrorPagePlugin());

@@ -27,7 +27,7 @@ use OCP\Files\Storage\IStorageFactory;
 use OCP\IConfig;
 use OCP\ILogger;
 use OCP\IUser;
-use OCP\Share\IExtraPermissions;
+use OCP\Share\IAttributes as IShareAttributes;
 use OCP\Share\IManager;
 use OCA\Files_Sharing\SharedMount;
 use OCP\IUserManager;
@@ -70,34 +70,34 @@ class MountProviderTest extends TestCase {
 		$this->provider = new MountProvider($this->config, $this->shareManager, $this->logger);
 	}
 
-	private function makeMockExtraPermissions($perms) {
-		if ($perms === null) {
+	private function makeMockShareAttributes($attrs) {
+		if ($attrs === null) {
 			return null;
 		}
 
-		$extraPermissions = $this->createMock(IExtraPermissions::class);
-		$extraPermissions->method('getApps')->willReturn(\array_keys($perms));
-		$extraPermissions->method('getKeys')->will(
-			$this->returnCallback(function ($app) use ($perms) {
-				return \array_keys($perms[$app]);
+		$shareAttributes = $this->createMock(IShareAttributes::class);
+		$shareAttributes->method('getScopes')->willReturn(\array_keys($attrs));
+		$shareAttributes->method('getKeys')->will(
+			$this->returnCallback(function ($scope) use ($attrs) {
+				return \array_keys($attrs[$scope]);
 			})
 		);
-		$extraPermissions->method('getPermission')->will(
-			$this->returnCallback(function ($app, $key) use ($perms) {
-				return $perms[$app][$key];
+		$shareAttributes->method('getAttribute')->will(
+			$this->returnCallback(function ($scope, $key) use ($attrs) {
+				return $attrs[$scope][$key];
 			})
 		);
-		return $extraPermissions;
+		return $shareAttributes;
 	}
 
-	private function makeMockShare($id, $nodeId, $owner = 'user2', $target = null, $permissions = 31, $extraPermissions = [], $state = null) {
+	private function makeMockShare($id, $nodeId, $owner = 'user2', $target = null, $permissions = 31, $attributes = [], $state = null) {
 		$share = $this->createMock(IShare::class);
 		$share->expects($this->any())
 			->method('getPermissions')
 			->will($this->returnValue($permissions));
 		$share->expects($this->any())
-			->method('getExtraPermissions')
-			->will($this->returnValue($this->makeMockExtraPermissions($extraPermissions)));
+			->method('getAttributes')
+			->will($this->returnValue($this->makeMockShareAttributes($attributes)));
 		$share->expects($this->any())
 			->method('getShareOwner')
 			->will($this->returnValue($owner));
@@ -137,19 +137,19 @@ class MountProviderTest extends TestCase {
 		$rootFolder = $this->createMock(IRootFolder::class);
 		$userManager = $this->createMock(IUserManager::class);
 
-		$extraPermissions1 = [];
-		$extraPermissions2 = ['app1' => ['perm1' => true]];
+		$attr1 = [];
+		$attr2 = ['app1' => ['perm1' => true]];
 		$userShares = [
-			$this->makeMockShare(1, 100, 'user2', '/share2', 0, $extraPermissions1),
-			$this->makeMockShare(2, 100, 'user2', '/share2', 31, $extraPermissions2),
-			$this->makeMockShare(6, 100, 'user2', '/share2', 31, $extraPermissions2, \OCP\Share::STATE_PENDING),
-			$this->makeMockShare(7, 100, 'user2', '/share2', 31, $extraPermissions2, \OCP\Share::STATE_REJECTED),
+			$this->makeMockShare(1, 100, 'user2', '/share2', 0, $attr1),
+			$this->makeMockShare(2, 100, 'user2', '/share2', 31, $attr2),
+			$this->makeMockShare(6, 100, 'user2', '/share2', 31, $attr2, \OCP\Share::STATE_PENDING),
+			$this->makeMockShare(7, 100, 'user2', '/share2', 31, $attr2, \OCP\Share::STATE_REJECTED),
 		];
 
 		$groupShares = [
-			$this->makeMockShare(3, 100, 'user2', '/share2', 0, $extraPermissions1),
-			$this->makeMockShare(4, 101, 'user2', '/share4', 31, $extraPermissions2),
-			$this->makeMockShare(5, 100, 'user1', '/share4', 31, $extraPermissions2),
+			$this->makeMockShare(3, 100, 'user2', '/share2', 0, $attr1),
+			$this->makeMockShare(4, 101, 'user2', '/share4', 31, $attr2),
+			$this->makeMockShare(5, 100, 'user1', '/share4', 31, $attr2),
 		];
 
 		$userGroupUserShares = \array_merge($userShares, $groupShares);
@@ -184,7 +184,7 @@ class MountProviderTest extends TestCase {
 		$this->assertEquals(100, $mountedShare1->getNodeId());
 		$this->assertEquals('/share2', $mountedShare1->getTarget());
 		$this->assertEquals(31, $mountedShare1->getPermissions());
-		$this->assertEquals(true, $mountedShare1->getExtraPermissions()->getPermission('app1', 'perm1'));
+		$this->assertEquals(true, $mountedShare1->getAttributes()->getAttribute('app1', 'perm1'));
 
 		$mountedShare2 = $mounts[1]->getShare();
 		$this->assertEquals('4', $mountedShare2->getId());
@@ -192,7 +192,7 @@ class MountProviderTest extends TestCase {
 		$this->assertEquals(101, $mountedShare2->getNodeId());
 		$this->assertEquals('/share4', $mountedShare2->getTarget());
 		$this->assertEquals(31, $mountedShare2->getPermissions());
-		$this->assertEquals(true, $mountedShare2->getExtraPermissions()->getPermission('app1', 'perm1'));
+		$this->assertEquals(true, $mountedShare2->getAttributes()->getAttribute('app1', 'perm1'));
 	}
 
 	public function mergeSharesDataProvider() {
@@ -328,15 +328,15 @@ class MountProviderTest extends TestCase {
 		];
 	}
 
-	private function assertExtraPermissions($expected, IExtraPermissions $actual) {
+	private function assertShareAttributes($expected, IShareAttributes $actual) {
 		if ($expected === null) {
 			$this->assertEquals($expected, $actual);
 		} else {
 			$actualArray = [];
-			foreach ($actual->getApps() as $app) {
-				$actualArray[$app] = [];
-				foreach ($actual->getKeys($app) as $key) {
-					$actualArray[$app][$key] = $actual->getPermission($app, $key);
+			foreach ($actual->getScopes() as $scope) {
+				$actualArray[$scope] = [];
+				foreach ($actual->getKeys($scope) as $key) {
+					$actualArray[$scope][$key] = $actual->getAttribute($scope, $key);
 				}
 			}
 			$this->assertEquals($expected, $actualArray);
@@ -409,7 +409,7 @@ class MountProviderTest extends TestCase {
 			$this->assertEquals($expectedShare[2], $share->getShareOwner());
 			$this->assertEquals($expectedShare[3], $share->getTarget());
 			$this->assertEquals($expectedShare[4], $share->getPermissions());
-			$this->assertExtraPermissions($expectedShare[5], $share->getExtraPermissions());
+			$this->assertShareAttributes($expectedShare[5], $share->getAttributes());
 		}
 	}
 }

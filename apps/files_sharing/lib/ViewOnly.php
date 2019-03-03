@@ -2,7 +2,7 @@
 /**
  * @author Piotr Mrowczynski piotr@owncloud.com
  *
- * @copyright Copyright (c) 2018, ownCloud GmbH
+ * @copyright Copyright (c) 2019, ownCloud GmbH
  * @license AGPL-3.0
  *
  * This code is free software: you can redistribute it and/or modify
@@ -19,12 +19,11 @@
  *
  */
 
-namespace OCA\Files;
+namespace OCA\Files_Sharing;
 
 use OCA\Files_Sharing\SharedStorage;
 use OCP\Files\FileInfo;
 use \OC\Files\Filesystem;
-
 
 /**
  * Handles restricting for download of files
@@ -36,17 +35,25 @@ class ViewOnly {
 	 * @return bool
 	 */
 	public function check($pathsToCheck) {
+		// If any of elements cannot be downloaded, prevent whole download
+		$canDownload = true;
 		foreach ($pathsToCheck as $file) {
 			if (Filesystem::is_file($file)) {
 				// access to filecache is expensive in the loop
 				$fileInfo = Filesystem::getFileInfo($file);
-				return $this->checkFileInfo($fileInfo);
+				if (!$this->checkFileInfo($fileInfo)) {
+					$canDownload = false;
+					break;
+				}
 			} elseif (Filesystem::is_dir($file)) {
 				// get directory content is rather cheap query
-				return $this->dirRecursiveCheck($file);
+				if (!$this->dirRecursiveCheck($file)) {
+					$canDownload = false;
+					break;
+				}
 			}
 		}
-		return true;
+		return $canDownload;
 	}
 
 	/**
@@ -54,18 +61,27 @@ class ViewOnly {
 	 * @return bool
 	 */
 	private function dirRecursiveCheck($dir) {
+		$dirInfo = Filesystem::getFileInfo($dir);
+		if (!$this->checkFileInfo($dirInfo)) {
+			return false;
+		}
+		// If any of elements cannot be downloaded, prevent whole download
+		$canDownload = true;
 		$files = Filesystem::getDirectoryContent($dir);
 		foreach ($files as $file) {
 			$filename = $file->getName();
 			if ($file->getType() === FileInfo::TYPE_FILE) {
-				return $this->checkFileInfo($file);
+				if (!$this->checkFileInfo($file)) {
+					$canDownload = false;
+					break;
+				}
 			} elseif ($file->getType() === FileInfo::TYPE_FOLDER) {
 				$file = $dir . '/' . $filename;
 				return $this->dirRecursiveCheck($file);
 			}
 		}
 
-		return true;
+		return $canDownload;
 	}
 
 	/**
@@ -84,8 +100,9 @@ class ViewOnly {
 		$share = $storage->getShare();
 
 		// Check if read-only and on whether permission can download is both set and disabled.
+
 		$canDownload = $share->getAttributes()->getAttribute('core', 'can-download');
-		if (!$fileInfo->isUpdateable() && $canDownload !== null && !$canDownload) {
+		if ($canDownload !== null && !$canDownload) {
 			return false;
 		}
 		return true;

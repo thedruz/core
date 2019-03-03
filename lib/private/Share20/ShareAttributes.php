@@ -2,7 +2,7 @@
 /**
  * @author Piotr Mrowczynski <piotr@owncloud.com>
  *
- * @copyright Copyright (c) 2018, ownCloud GmbH
+ * @copyright Copyright (c) 2019, ownCloud GmbH
  * @license AGPL-3.0
  *
  * This code is free software: you can redistribute it and/or modify
@@ -39,6 +39,7 @@ class ShareAttributes implements IAttributes {
 			$this->attributes[$scope] = [];
 		}
 		$this->attributes[$scope][$key] = $enabled;
+		return $this;
 	}
 
 	/**

@@ -66,8 +66,8 @@
 			'</span>' +
 			'{{/if}}' +
 			'</div>' +
-			'<div class="attributes"">' +
-			'{{#each attributes}}' +
+			'<div class="shareAttributes"">' +
+			'{{#each shareAttributes}}' +
 			'<span class="shareOption">' +
 			'<input id="can-{{name}}-{{cid}}-{{shareWith}}" type="checkbox" name="{{name}}" class="attributes checkbox" {{#if enabled}}checked="checked"{{/if}} data-scope="{{scope}}" data-enabled="{{enabled}}""/>' +
 			'<label for="can-{{name}}-{{cid}}-{{shareWith}}">{{label}}</label>' +
@@ -126,17 +126,25 @@
 		 */
 		getAttributesObject: function(shareIndex) {
 			var model = this.model;
+			var cid = this.cid;
 			var shareWith = model.getShareWith(shareIndex);
 
-			// Returns OC.Share.Types.ShareAttribute[]
+			// Returns OC.Share.Types.ShareAttribute[] which were set for this
+			// share (and stored in DB)
 			var attributes = model.getShareAttributes(shareIndex);
 
 			var list = [];
 			attributes.map(function(attribute) {
-				var label = model.getShareAttributeLabel(attribute.scope, attribute.name);
+				// Check if the share attribute set for this file is still in
+				// registered share attributes and get its label
+				var label = model.getRegisteredShareAttributeLabel(
+					attribute.scope,
+					attribute.name
+				);
+
 				if (label) {
 					list.push({
-						cid: this.cid,
+						cid: cid,
 						shareWith: shareWith,
 						enabled: attribute.enabled,
 						scope: attribute.scope,
@@ -145,8 +153,8 @@
 					});
 				} else {
 					OC.Notification.showTemporary(t('core', 'Share with ' +
-						'user {shareWith} has attribute {name} which became unavailable. ' +
-						'Please recreate the share!',
+						'user {shareWith} has attribute {name} which is ' +
+						'no longer available. Please recreate the share!',
 						{ name: attribute.name, shareWith: shareWith })
 					);
 				}
@@ -179,7 +187,7 @@
 				hasCreatePermission: this.model.hasCreatePermission(shareIndex),
 				hasUpdatePermission: this.model.hasUpdatePermission(shareIndex),
 				hasDeletePermission: this.model.hasDeletePermission(shareIndex),
-				attributes: this.getAttributesObject(shareIndex),
+				shareAttributes: this.getAttributesObject(shareIndex),
 				wasMailSent: this.model.notificationMailWasSent(shareIndex),
 				shareWith: shareWith,
 				shareWithDisplayName: shareWithDisplayName,

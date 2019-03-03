@@ -155,7 +155,7 @@ class DefaultShareProvider implements IShareProvider {
 		$qb->setValue('permissions', $qb->createNamedParameter($share->getPermissions()));
 
 		// set share attributes
-		$shareAttributes = $this->formatAttributes(
+		$shareAttributes = $this->formatShareAttributes(
 			$share->getAttributes()
 		);
 		$qb->setValue('attributes', $qb->createNamedParameter($shareAttributes));
@@ -206,7 +206,7 @@ class DefaultShareProvider implements IShareProvider {
 	public function update(\OCP\Share\IShare $share) {
 		$this->validate($share);
 
-		$shareAttributes = $this->formatAttributes(
+		$shareAttributes = $this->formatShareAttributes(
 			$share->getAttributes()
 		);
 
@@ -412,7 +412,7 @@ class DefaultShareProvider implements IShareProvider {
 			$data = $stmt->fetch();
 			$stmt->closeCursor();
 
-			$shareAttributes = $this->formatAttributes(
+			$shareAttributes = $this->formatShareAttributes(
 				$share->getAttributes()
 			);
 
@@ -985,7 +985,7 @@ class DefaultShareProvider implements IShareProvider {
 			$share->setToken($data['token']);
 		}
 
-		$share = $this->setAttributes($share, $data['attributes']);
+		$share = $this->updateShareAttributes($share, $data['attributes']);
 
 		$share->setSharedBy($data['uid_initiator']);
 		$share->setShareOwner($data['uid_owner']);
@@ -1270,7 +1270,7 @@ class DefaultShareProvider implements IShareProvider {
 	 * @param string $data
 	 * @return IShare modified share
 	 */
-	private function setAttributes($share, $data) {
+	private function updateShareAttributes(IShare $share, $data) {
 		if ($data !== null) {
 			$attributes = new ShareAttributes();
 			$attributesJson = \json_decode($data, true);
@@ -1291,7 +1291,7 @@ class DefaultShareProvider implements IShareProvider {
 	 * @param IAttributes|null $attributes
 	 * @return string|null
 	 */
-	private function formatAttributes($attributes) {
+	private function formatShareAttributes($attributes) {
 		if ($attributes === null || empty($attributes->getScopes())) {
 			return null;
 		}
