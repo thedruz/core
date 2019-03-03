@@ -21,8 +21,10 @@
 
 namespace OCA\DAV\DAV;
 
+use OC\Files\Node\Folder;
 use OCA\DAV\Connector\Sabre\Exception\Forbidden;
 use OCA\DAV\Connector\Sabre\File as DavFile;
+use OCA\DAV\Meta\MetaFile;
 use OCA\Files_Sharing\SharedStorage;
 use OCP\Files\FileInfo;
 use Sabre\DAV\Exception\ServiceUnavailable;
@@ -73,43 +75,31 @@ class ViewOnlyPlugin extends ServerPlugin {
 
 		try {
 			$davNode = $this->server->tree->getNodeForPath($path);
-			if ($davNode === null || !$davNode instanceof DavFile) {
+			if (!($davNode instanceof DavFile || $davNode instanceof MetaFile)) {
+				return true;
+			}
+			// Restrict view-only to nodes which are shared
+			$node = $davNode->getNode();
+			if (!$node instanceof FileInfo) {
 				return true;
 			}
 
-			$fileInfo = $davNode->getFileInfo();
-			if ($fileInfo && !$this->checkFileInfo($fileInfo)) {
+			$storage = $node->getStorage();
+			if (!$storage->instanceOfStorage(SharedStorage::class)) {
+				return true;
+			}
+			// Extract extra permissions
+			/** @var \OCA\Files_Sharing\SharedStorage $storage */
+			$share = $storage->getShare();
+
+			// Check if read-only and on whether permission can download is both set and disabled.
+			$canDownload = $share->getAttributes()->getAttribute('core', 'can-download');
+			if (!$node->isUpdateable() && $canDownload !== null && !$canDownload) {
 				throw new Forbidden('File or folder is in secure-view mode and cannot be directly downloaded.');
 			}
 		} catch (NotFound $e) {
 		}
 
-		return true;
-	}
-
-
-	/**
-	 * Check FileInfo for share permission can-download
-	 *
-	 * @param FileInfo $fileInfo
-	 * @return bool
-	 */
-	private function checkFileInfo(FileInfo $fileInfo) {
-		// Restrict view-only to nodes which are shared
-		$storage = $fileInfo->getStorage();
-		if (!$storage->instanceOfStorage(SharedStorage::class)) {
-			return true;
-		}
-
-		// Extract extra permissions
-		/** @var \OCA\Files_Sharing\SharedStorage $storage */
-		$share = $storage->getShare();
-
-		// Check if read-only and on whether permission can download is both set and disabled.
-		$canDownload = $share->getAttributes()->getAttribute('core', 'can-download');
-		if (!$fileInfo->isUpdateable() && $canDownload !== null && !$canDownload) {
-			return false;
-		}
 		return true;
 	}
 }

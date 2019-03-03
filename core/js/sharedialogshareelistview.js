@@ -102,7 +102,7 @@
 		events: {
 			'click .unshare': 'onUnshare',
 			'click .permissions': 'onPermissionChange',
-			'click .extra-permissions': 'onPermissionChange',
+			'click .attributes': 'onPermissionChange',
 			'click .showCruds': 'onCrudsToggle',
 			'click .mailNotification': 'onSendMailNotification'
 		},
