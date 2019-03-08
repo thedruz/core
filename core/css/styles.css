@@ -619,6 +619,7 @@ label.infield {
 }
 #body-login input.login {
 	width: -webkit-fill-available;
+	max-width: 300px;
 	float: none;
 }
 #body-login input[type="submit"] {
@@ -631,7 +632,9 @@ label.infield {
 	margin-top: 10px;
 	text-align: center;
 }
-
+#loginbutton {
+	text-align: center;
+}
 /* Sticky footer */
 #body-login .wrapper {
 	min-height: 100%;
