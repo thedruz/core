@@ -33,6 +33,7 @@ use OC\Files\Cache\CacheEntry;
 use OC\Files\Filesystem;
 use OC\Files\Mount\Manager;
 use OC\Files\Storage\LocalTempFileTrait;
+use OC\HintException;
 use OC\Memcache\ArrayCache;
 use OCP\Encryption\Exceptions\GenericEncryptionException;
 use OCP\Encryption\IFile;
@@ -40,8 +41,11 @@ use OCP\Encryption\IManager;
 use OCP\Encryption\Keys\IStorage;
 use OCP\Files\Mount\IMountPoint;
 use OCP\Files\Storage;
+use OCP\IConfig;
 use OCP\ILogger;
 use OCP\Files\Cache\ICacheEntry;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\EventDispatcher\GenericEvent;
 
 class Encryption extends Wrapper {
 	use LocalTempFileTrait;
@@ -85,6 +89,9 @@ class Encryption extends Wrapper {
 	/** @var  ArrayCache */
 	private $arrayCache;
 
+	/** @var EventDispatcherInterface */
+	private $eventDispatcher;
+
 	/** @var array which has information of sourcePath during rename operation */
 	private $sourcePath;
 
@@ -101,6 +108,7 @@ class Encryption extends Wrapper {
 	 * @param Update $update
 	 * @param Manager $mountManager
 	 * @param ArrayCache $arrayCache
+	 * @param EventDispatcherInterface$eventDispatcher
 	 */
 	public function __construct(
 			$parameters,
@@ -112,7 +120,8 @@ class Encryption extends Wrapper {
 			IStorage $keyStorage = null,
 			Update $update = null,
 			Manager $mountManager = null,
-			ArrayCache $arrayCache = null
+			ArrayCache $arrayCache = null,
+			EventDispatcherInterface $eventDispatcher = null
 		) {
 		$this->mountPoint = $parameters['mountPoint'];
 		$this->mount = $parameters['mount'];
@@ -126,6 +135,7 @@ class Encryption extends Wrapper {
 		$this->update = $update;
 		$this->mountManager = $mountManager;
 		$this->arrayCache = $arrayCache;
+		$this->eventDispatcher = ($eventDispatcher === null) ? \OC::$server->getEventDispatcher() : $eventDispatcher;
 		parent::__construct($parameters);
 	}
 
@@ -782,7 +792,7 @@ class Encryption extends Wrapper {
 					unset($this->sourcePath[$targetInternalPath]);
 				}
 				$target = $this->fopen($targetInternalPath, 'w');
-				list(, $result) = \OC_Helper::streamCopy($source, $target);
+				$result = $this->copyFile($source, $target, $sourceInternalPath);
 				\fclose($source);
 				\fclose($target);
 			} catch (\Exception $e) {
@@ -804,6 +814,53 @@ class Encryption extends Wrapper {
 			}
 		}
 		return (bool)$result;
+	}
+
+	/**
+	 * This method copies the file from the source to the target
+	 *
+	 * When the file is copied, the source file is read. And while decryption
+	 * any signature mismatch happens, then the file is tried to copy again
+	 * by disabling signature check. A custom symfony event is triggered here.
+	 *
+	 * @param resource $source, resource type for reading the file
+	 * @param resource $target, resource type for writing the file
+	 * @param string|null $sourceFilePath
+	 * @return mixed
+	 * @throws HintException
+	 */
+	private function copyFile($source, $target, $sourceFilePath = null) {
+		$retry = false;
+		do {
+			try {
+				$signatureMismatchEvent = new GenericEvent("signaturemismatch", []);
+				if ($retry === true) {
+					/**
+					 *  While retrying reset the source to seek offset 0
+					 */
+					\fseek($source, 0);
+				}
+				list(, $result) = \OC_Helper::streamCopy($source, $target);
+				if ($retry === true) {
+					unset($signatureMismatchEvent['fileName']);
+					$signatureMismatchEvent->setArguments(['retryWithIgnoreSignature' => 'false']);
+					$this->eventDispatcher->dispatch('files.aftersignaturemismatch', $signatureMismatchEvent);
+				}
+				break;
+			} catch (HintException $e) {
+				$this->logger->warning("The file with signature mismatch is " . $sourceFilePath);
+				$this->logger->logException($e);
+				if ($retry === true) {
+					throw $e;
+				} else {
+					$retry = true;
+				}
+				$signatureMismatchEvent->setArguments(['fileName' => $sourceFilePath, 'retryWithIgnoreSignature' => (string)$retry]);
+				$this->eventDispatcher->dispatch('files.aftersignaturemismatch', $signatureMismatchEvent);
+			}
+		} while ($retry === true);
+
+		return $result;
 	}
 
 	/**

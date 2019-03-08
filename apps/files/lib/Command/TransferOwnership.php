@@ -27,9 +27,11 @@ namespace OCA\Files\Command;
 use OC\Encryption\Manager;
 use OC\Files\Filesystem;
 use OC\Files\View;
+use OC\HintException;
 use OC\Share20\ProviderFactory;
 use OCP\Files\FileInfo;
 use OCP\Files\Mount\IMountManager;
+use OCP\IConfig;
 use OCP\ILogger;
 use OCP\IUserManager;
 use OCP\Share\IManager;
@@ -40,6 +42,8 @@ use Symfony\Component\Console\Input\InputArgument;
 use Symfony\Component\Console\Input\InputInterface;
 use Symfony\Component\Console\Input\InputOption;
 use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\EventDispatcher\EventDispatcherInterface;
+use Symfony\Component\EventDispatcher\GenericEvent;
 
 class TransferOwnership extends Command {
 
@@ -60,6 +64,12 @@ class TransferOwnership extends Command {
 
 	/** @var ProviderFactory  */
 	private $shareProviderFactory;
+
+	/** @var IConfig */
+	private $config;
+
+	/** @var EventDispatcherInterface */
+	private $eventDispatcher;
 
 	/** @var bool */
 	private $filesExist = false;
@@ -85,13 +95,18 @@ class TransferOwnership extends Command {
 	/** @var string */
 	private $finalTarget;
 
-	public function __construct(IUserManager $userManager, IManager $shareManager, IMountManager $mountManager, Manager $encryptionManager, ILogger $logger, ProviderFactory $shareProviderFactory) {
+	public function __construct(IUserManager $userManager, IManager $shareManager,
+								IMountManager $mountManager, Manager $encryptionManager,
+								ILogger $logger, ProviderFactory $shareProviderFactory,
+								IConfig $config, EventDispatcherInterface $eventDispatcher) {
 		$this->userManager = $userManager;
 		$this->shareManager = $shareManager;
 		$this->mountManager = $mountManager;
 		$this->encryptionManager = $encryptionManager;
 		$this->logger = $logger;
 		$this->shareProviderFactory = $shareProviderFactory;
+		$this->config = $config;
+		$this->eventDispatcher = $eventDispatcher;
 		parent::__construct();
 	}
 
@@ -287,7 +302,22 @@ class TransferOwnership extends Command {
 			}
 		}
 
+		$this->eventDispatcher->addListener('files.aftersignaturemismatch', function (GenericEvent $event) use ($output) {
+			if ($event->hasArgument('fileName')) {
+				$output->writeln("<error>The file affected by signature mismatch: " . $event->getArgument('fileName') . "</error>");
+			}
+			if ($event->hasArgument('retryWithIgnoreSignature')) {
+				$this->config->setAppValue('encryption', 'ignore_signature', $event->getArgument('retryWithIgnoreSignature'));
+			}
+		});
+
+		if ($this->config->getAppValue('encryption', 'ignore_signature', 'false') === 'true') {
+			$this->config->setAppValue('encryption', 'ignore_signature', 'false');
+		}
+
 		$view->rename($sourcePath, $this->finalTarget);
+		//Reset the value of ignore_signature to true
+		$this->config->setAppValue('encryption', 'ignore_signature', 'true');
 
 		if (!\is_dir("$this->sourceUser/files")) {
 			// because the files folder is moved away we need to recreate it
