@@ -279,7 +279,7 @@ a.two-factor-cancel {
 	right: 0;
 	top: 0;
 	border: 2px solid #ffffff;
-	background-color: #1d2d446e;
+	background-color: rgba(0, 0, 0, .25);
 	-ms-filter: "progid:DXImageTransform.Microsoft.Alpha(Opacity=90)";
 	opacity: .9;
 	}
