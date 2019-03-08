@@ -65,6 +65,19 @@ Feature: Federation Sharing - sharing with users on other cloud storages
     And the user has reloaded the current page of the webUI
     Then file "lorem (2).txt" should be listed on the webUI
 
+  Scenario: User-based accepting is disabled while global is enabled
+    Given parameter "autoAddServers" of app "federation" has been set to "1"
+    And user "user1" from server "REMOTE" has shared "simple-folder" with user "user1" from server "LOCAL"
+    And user "user1" from server "LOCAL" has accepted the last pending share
+    And the user has reloaded the current page of the webUI
+    And parameter "auto_accept_trusted" of app "federatedfilesharing" has been set to "yes"
+    And parameter "autoAddServers" of app "federation" has been set to "0"
+    And the user has browsed to the personal sharing settings page
+    When the user disables automatically accepting remote shares from trusted servers
+    And user "user1" from server "REMOTE" shares "/lorem.txt" with user "user1" from server "LOCAL" using the sharing API
+    And the user browses to the files page
+    Then file "lorem (2).txt" should not be listed on the webUI
+
   @skipOnMICROSOFTEDGE
   Scenario: share a folder with an remote user and prohibit deleting - local server shares - remote server receives
     When the user shares folder "simple-folder" with remote user "user1@%remote_server_without_scheme%" using the webUI
